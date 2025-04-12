@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { 
   User, 
@@ -20,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -68,7 +68,6 @@ const Settings = () => {
           </TabsTrigger>
         </TabsList>
         
-        {/* Profile Tab */}
         <TabsContent value="profile">
           <Card>
             <CardHeader>
@@ -145,7 +144,6 @@ const Settings = () => {
           </Card>
         </TabsContent>
         
-        {/* Appearance Tab */}
         <TabsContent value="appearance">
           <Card>
             <CardHeader>
@@ -229,7 +227,6 @@ const Settings = () => {
           </Card>
         </TabsContent>
         
-        {/* Notifications Tab */}
         <TabsContent value="notifications">
           <Card>
             <CardHeader>
@@ -317,7 +314,6 @@ const Settings = () => {
           </Card>
         </TabsContent>
         
-        {/* Security Tab */}
         <TabsContent value="security">
           <Card>
             <CardHeader>
@@ -384,7 +380,7 @@ const Settings = () => {
                         <p className="text-sm text-gray-500">Windows • Chrome • New Delhi, India</p>
                         <p className="text-xs text-gray-400 mt-1">Started: {new Date().toLocaleDateString()}</p>
                       </div>
-                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
+                      <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
                         Active
                       </Badge>
                     </div>
