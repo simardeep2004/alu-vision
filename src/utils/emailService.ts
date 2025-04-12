@@ -30,3 +30,39 @@ export const emailQuotation = async (quotation: Quotation, recipientEmail: strin
     return false;
   }
 };
+
+// Function to send welcome email to new customer
+export const sendWelcomeEmail = async (customerEmail: string, customerName: string): Promise<boolean> => {
+  try {
+    // Simulate API call
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        console.log(`Sending welcome email to ${customerEmail}`);
+        toast.success(`Welcome email sent to ${customerName}`);
+        resolve(true);
+      }, 1000);
+    });
+  } catch (error) {
+    console.error("Error sending welcome email:", error);
+    toast.error("Failed to send welcome email.");
+    return false;
+  }
+};
+
+// Function to send follow-up email
+export const sendFollowUpEmail = async (quotation: Quotation): Promise<boolean> => {
+  try {
+    // Simulate API call
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        console.log(`Sending follow-up email for quotation ${quotation.id} to ${quotation.customerEmail}`);
+        toast.success(`Follow-up email sent to ${quotation.customerName}`);
+        resolve(true);
+      }, 1000);
+    });
+  } catch (error) {
+    console.error("Error sending follow-up email:", error);
+    toast.error("Failed to send follow-up email.");
+    return false;
+  }
+};

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -11,8 +12,11 @@ import {
   Percent,
   Calculator,
   Info,
+  Ruler,
   Search,
-  Ruler
+  X,
+  User,
+  Phone
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,6 +58,9 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import { emailQuotation } from '@/utils/emailService';
+import { downloadQuotationPdf, printQuotationPdf } from '@/utils/pdfGenerator';
+import { getCustomerByEmail, getOrCreateCustomerFromQuotation } from '@/utils/crmService';
 
 // Types
 type ItemCategory = 'Shutter' | 'OuterFrame' | 'Glass' | 'Accessory' | 'Hardware' | 'Other';
@@ -314,10 +321,29 @@ const QuotationBuilder = () => {
   const [wastagePercent, setWastagePercent] = useState<number>(5);
   const [taxPercent, setTaxPercent] = useState<number>(18); // GST
   const [discountPercent, setDiscountPercent] = useState<number>(0);
-  const [shutterWidth, setShutterWidth] = useState<number>(0);
-  const [shutterHeight, setShutterHeight] = useState<number>(0);
-  const [shutterArea, setShutterArea] = useState<number>(0);
-
+  
+  // State for dimensions (for items that need measurements)
+  const [itemWidth, setItemWidth] = useState<number>(0);
+  const [itemHeight, setItemHeight] = useState<number>(0);
+  const [itemArea, setItemArea] = useState<number>(0);
+  
+  // Pricing rates per 1000mm² for different measured items
+  const areaBasedRates = {
+    'Shutter': { standard: 21, premium: 24, luxury: 30 },
+    'OuterFrame': { standard: 18, premium: 22, luxury: 28 },
+    'Glass': { standard: 15, premium: 20, luxury: 25 }
+  };
+  
+  // Calculate area when width or height changes
+  useEffect(() => {
+    if (itemWidth > 0 && itemHeight > 0) {
+      const area = itemWidth * itemHeight;
+      setItemArea(area);
+    } else {
+      setItemArea(0);
+    }
+  }, [itemWidth, itemHeight]);
+  
   // Pricing multipliers based on series
   const seriesMultipliers = {
     'standard': 1.0,
@@ -348,11 +374,35 @@ const QuotationBuilder = () => {
     return seriesMultipliers[selectedSeries];
   };
   
+  // Calculate area-based price
+  const calculateAreaBasedPrice = (category: ItemCategory, area: number): number => {
+    if (!area || area <= 0) return 0;
+    
+    const baseRatePerThousandSqMm = areaBasedRates[category as keyof typeof areaBasedRates]?.[selectedSeries] || 0;
+    return (area / 1000) * baseRatePerThousandSqMm;
+  };
+  
   // Calculate item price with series adjustment
-  const calculateAdjustedPrice = (item: InventoryItem) => {
+  const calculateAdjustedPrice = (item: InventoryItem, width?: number, height?: number): number => {
+    // For area-based pricing items (Shutters, OuterFrames, Glass)
+    if ((item.category === 'Shutter' || item.category === 'OuterFrame' || item.category === 'Glass') 
+        && width && height && width > 0 && height > 0) {
+      const area = width * height;
+      return calculateAreaBasedPrice(item.category as ItemCategory, area);
+    }
+    
+    // For regular items
     const seriesMultiplier = getSeriesMultiplier();
     const categoryMultiplier = categoryMultipliers[item.category as keyof typeof categoryMultipliers];
     return item.price * seriesMultiplier * categoryMultiplier;
+  };
+  
+  // Get per unit price (price per 1000mm²)
+  const getPerUnitPrice = (category: string): number => {
+    if (category === 'Shutter' || category === 'OuterFrame' || category === 'Glass') {
+      return areaBasedRates[category as keyof typeof areaBasedRates]?.[selectedSeries] || 0;
+    }
+    return 0;
   };
   
   // Update filtered items when search query or category changes
@@ -370,6 +420,33 @@ const QuotationBuilder = () => {
     setFilteredItems(filtered);
   }, [searchQuery, selectedCategory]);
   
+  // Reset dimensions when selecting a new item
+  useEffect(() => {
+    if (selectedItemId) {
+      const item = inventoryData.find(item => item.id === selectedItemId);
+      if (item) {
+        // Reset dimensions if changing between different types of items
+        setItemWidth(0);
+        setItemHeight(0);
+        setItemArea(0);
+      }
+    }
+  }, [selectedItemId]);
+  
+  // Auto-fill customer information if email exists in CRM
+  const handleCustomerEmailChange = (email: string) => {
+    setCustomerEmail(email);
+    
+    // Check if customer exists in CRM
+    const customer = getCustomerByEmail(email);
+    if (customer) {
+      setCustomerName(customer.name);
+      setCustomerPhone(customer.phone || '');
+      setCustomerAddress(customer.address || '');
+      toast.info(`Customer information loaded for ${customer.name}`);
+    }
+  };
+  
   // Handle add item
   const handleAddItem = () => {
     if (!selectedItemId || quantity <= 0) return;
@@ -377,10 +454,32 @@ const QuotationBuilder = () => {
     const item = inventoryData.find(item => item.id === selectedItemId);
     if (!item) return;
     
-    const adjustedPrice = calculateAdjustedPrice(item);
+    // Check if dimensions are required but not provided
+    const needsDimensions = (item.category === 'Shutter' || item.category === 'OuterFrame' || item.category === 'Glass');
+    if (needsDimensions && (itemWidth <= 0 || itemHeight <= 0)) {
+      toast.error(`Please specify dimensions for ${item.category}`);
+      return;
+    }
+    
+    // Calculate the price based on item type
+    let adjustedPrice = 0;
+    let perUnitPrice = 0;
+    
+    if (needsDimensions) {
+      perUnitPrice = getPerUnitPrice(item.category);
+      adjustedPrice = calculateAreaBasedPrice(item.category as ItemCategory, itemArea);
+    } else {
+      adjustedPrice = calculateAdjustedPrice(item);
+    }
     
     // Check if item already exists in the quotation
-    const existingItemIndex = selectedItems.findIndex(i => i.id === selectedItemId);
+    const existingItemIndex = selectedItems.findIndex(i => {
+      // For dimensional items, check dimensions match
+      if (needsDimensions) {
+        return i.id === item.id && i.width === itemWidth && i.height === itemHeight;
+      }
+      return i.id === item.id;
+    });
     
     if (existingItemIndex >= 0) {
       // Update existing item
@@ -401,11 +500,19 @@ const QuotationBuilder = () => {
         id: item.id,
         name: item.name,
         category: item.category,
-        description: item.description,
         quantity,
+        unit: needsDimensions ? 'set' : 'pcs',
         unitPrice: adjustedPrice,
         totalPrice: quantity * adjustedPrice,
       };
+      
+      // Add dimensions for measured items
+      if (needsDimensions) {
+        newItem.width = itemWidth;
+        newItem.height = itemHeight;
+        newItem.area = itemArea;
+        newItem.perUnitPrice = perUnitPrice;
+      }
       
       setSelectedItems([...selectedItems, newItem]);
     }
@@ -413,23 +520,42 @@ const QuotationBuilder = () => {
     // Reset form
     setSelectedItemId('');
     setQuantity(1);
+    setItemWidth(0);
+    setItemHeight(0);
+    setItemArea(0);
     setShowAddItemDialog(false);
     
     toast.success('Item added to quotation');
   };
   
   // Handle remove item
-  const handleRemoveItem = (id: string) => {
-    setSelectedItems(selectedItems.filter(item => item.id !== id));
+  const handleRemoveItem = (id: string, width?: number, height?: number) => {
+    // For dimensional items, also check dimensions
+    if (width && height) {
+      setSelectedItems(selectedItems.filter(item => 
+        !(item.id === id && item.width === width && item.height === height)
+      ));
+    } else {
+      setSelectedItems(selectedItems.filter(item => item.id !== id));
+    }
     toast.success('Item removed from quotation');
   };
   
   // Handle update item quantity
-  const handleUpdateQuantity = (id: string, newQuantity: number) => {
+  const handleUpdateQuantity = (id: string, newQuantity: number, width?: number, height?: number) => {
     if (newQuantity <= 0) return;
     
     const updatedItems = selectedItems.map(item => {
-      if (item.id === id) {
+      // For dimensional items, check all criteria
+      if (width && height) {
+        if (item.id === id && item.width === width && item.height === height) {
+          return {
+            ...item,
+            quantity: newQuantity,
+            totalPrice: newQuantity * item.unitPrice,
+          };
+        }
+      } else if (item.id === id) {
         return {
           ...item,
           quantity: newQuantity,
@@ -448,14 +574,32 @@ const QuotationBuilder = () => {
     
     // Update all item prices based on the new series
     const updatedItems = selectedItems.map(item => {
-      const inventoryItem = inventoryData.find(invItem => invItem.id === item.id);
-      if (inventoryItem) {
-        const newUnitPrice = calculateAdjustedPrice(inventoryItem);
+      if (item.width && item.height && item.area && 
+         (item.category === 'Shutter' || item.category === 'OuterFrame' || item.category === 'Glass')) {
+        // Update area-based pricing
+        const perUnitPrice = areaBasedRates[item.category as keyof typeof areaBasedRates]?.[newSeries] || 0;
+        const newUnitPrice = (item.area / 1000) * perUnitPrice;
+        
         return {
           ...item,
           unitPrice: newUnitPrice,
           totalPrice: item.quantity * newUnitPrice,
+          perUnitPrice: perUnitPrice,
         };
+      } else {
+        // Update regular item pricing
+        const inventoryItem = inventoryData.find(invItem => invItem.id === item.id);
+        if (inventoryItem) {
+          const seriesMultiplier = seriesMultipliers[newSeries];
+          const categoryMultiplier = categoryMultipliers[item.category as keyof typeof categoryMultipliers];
+          const newUnitPrice = inventoryItem.price * seriesMultiplier * categoryMultiplier;
+          
+          return {
+            ...item,
+            unitPrice: newUnitPrice,
+            totalPrice: item.quantity * newUnitPrice,
+          };
+        }
       }
       return item;
     });
@@ -464,8 +608,75 @@ const QuotationBuilder = () => {
     toast.success(`Changed to ${newSeries.charAt(0).toUpperCase() + newSeries.slice(1)} series pricing`);
   };
   
+  // Generate a random quotation ID
+  const generateQuotationId = (): string => {
+    return `Q${Math.floor(1000 + Math.random() * 9000)}`;
+  };
+  
+  // Handle download PDF
+  const handleDownloadPdf = () => {
+    const quotation = {
+      id: generateQuotationId(),
+      customerName,
+      customerEmail,
+      customerPhone,
+      customerAddress,
+      date: new Date().toISOString().split('T')[0],
+      total,
+      status: 'Draft' as const,
+      items: selectedItems,
+      notes
+    };
+    
+    downloadQuotationPdf(quotation);
+  };
+  
+  // Handle print PDF
+  const handlePrintPdf = () => {
+    const quotation = {
+      id: generateQuotationId(),
+      customerName,
+      customerEmail,
+      customerPhone,
+      customerAddress,
+      date: new Date().toISOString().split('T')[0],
+      total,
+      status: 'Draft' as const,
+      items: selectedItems,
+      notes
+    };
+    
+    printQuotationPdf(quotation);
+  };
+  
+  // Handle email quotation
+  const handleEmailQuotation = async () => {
+    const quotation = {
+      id: generateQuotationId(),
+      customerName,
+      customerEmail,
+      customerPhone,
+      customerAddress,
+      date: new Date().toISOString().split('T')[0],
+      total,
+      status: 'Sent' as const,
+      items: selectedItems,
+      notes
+    };
+    
+    // Add customer to CRM if not exists
+    await getOrCreateCustomerFromQuotation(quotation);
+    
+    // Send email
+    await emailQuotation(quotation);
+    
+    // Close dialog and navigate back
+    setIsSaveDialogOpen(false);
+    navigate('/quotations');
+  };
+  
   // Handle save quotation
-  const handleSaveQuotation = (status: 'Draft' | 'Sent') => {
+  const handleSaveQuotation = async (status: 'Draft' | 'Sent') => {
     // Validate form
     if (!customerName) {
       toast.error('Please enter a customer name');
@@ -482,13 +693,42 @@ const QuotationBuilder = () => {
       return;
     }
     
+    const quotation = {
+      id: generateQuotationId(),
+      customerName,
+      customerEmail,
+      customerPhone,
+      customerAddress,
+      date: new Date().toISOString().split('T')[0],
+      total,
+      status,
+      items: selectedItems,
+      notes
+    };
+    
+    // Add customer to CRM if not exists
+    await getOrCreateCustomerFromQuotation(quotation);
+    
     // In a real app, this would save to the database
+    if (status === 'Sent') {
+      // Send email for 'Sent' status
+      await emailQuotation(quotation);
+    }
+    
     toast.success(`Quotation saved as ${status}`);
     navigate('/quotations');
   };
   
   // Get unique categories from inventory
   const categories = Array.from(new Set(inventoryData.map(item => item.category)));
+  
+  // Determine if current item selection requires dimensions
+  const selectedItemNeedsDimensions = () => {
+    if (!selectedItemId) return false;
+    
+    const item = inventoryData.find(item => item.id === selectedItemId);
+    return item?.category === 'Shutter' || item?.category === 'OuterFrame' || item?.category === 'Glass';
+  };
   
   return (
     <div className="page-container">
@@ -533,7 +773,7 @@ const QuotationBuilder = () => {
                     id="customer-email"
                     type="email"
                     value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    onChange={(e) => handleCustomerEmailChange(e.target.value)}
                     placeholder="customer@example.com"
                     className="focus:border-alu-primary"
                   />
@@ -745,13 +985,21 @@ const QuotationBuilder = () => {
                       {/* Search and Filter */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                           <Input
                             placeholder="Search items..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="pl-10"
                           />
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                          {searchQuery && (
+                            <button
+                              onClick={() => setSearchQuery('')}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                              <X size={16} />
+                            </button>
+                          )}
                         </div>
                         
                         <Select
@@ -829,10 +1077,19 @@ const QuotationBuilder = () => {
                                     )}
                                   </TableCell>
                                   <TableCell className="text-right">
-                                    <div>₹{calculateAdjustedPrice(item).toFixed(2)}</div>
-                                    {getSeriesMultiplier() !== 1 && (
-                                      <div className="text-xs text-gray-500">
-                                        <span className="line-through">₹{item.price.toFixed(2)}</span>
+                                    {['Shutter', 'OuterFrame', 'Glass'].includes(item.category) ? (
+                                      <div>
+                                        <div>₹{areaBasedRates[item.category as keyof typeof areaBasedRates][selectedSeries]} per 1000mm²</div>
+                                        <div className="text-xs text-gray-500">(Area based pricing)</div>
+                                      </div>
+                                    ) : (
+                                      <div>
+                                        <div>₹{calculateAdjustedPrice(item).toFixed(2)}</div>
+                                        {getSeriesMultiplier() !== 1 && (
+                                          <div className="text-xs text-gray-500">
+                                            <span className="line-through">₹{item.price.toFixed(2)}</span>
+                                          </div>
+                                        )}
                                       </div>
                                     )}
                                   </TableCell>
@@ -843,12 +1100,12 @@ const QuotationBuilder = () => {
                         </Table>
                       </div>
                       
-                      {/* Dimensions section - Only show for shutters */}
-                      {selectedItemId && inventoryData.find(item => item.id === selectedItemId)?.category === 'Shutter' && (
+                      {/* Dimensions section - Show for items that need dimensions */}
+                      {selectedItemNeedsDimensions() && (
                         <div className="grid gap-4 p-4 bg-gray-50 rounded-lg border">
                           <h3 className="font-medium flex items-center">
                             <Ruler className="h-4 w-4 mr-2" />
-                            Shutter Dimensions
+                            Dimensions
                           </h3>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
@@ -858,8 +1115,8 @@ const QuotationBuilder = () => {
                                 type="number"
                                 min={100}
                                 max={5000}
-                                value={shutterWidth}
-                                onChange={(e) => setShutterWidth(Number(e.target.value))}
+                                value={itemWidth || ''}
+                                onChange={(e) => setItemWidth(Number(e.target.value))}
                               />
                             </div>
                             <div className="space-y-2">
@@ -869,21 +1126,43 @@ const QuotationBuilder = () => {
                                 type="number"
                                 min={100}
                                 max={5000}
-                                value={shutterHeight}
-                                onChange={(e) => setShutterHeight(Number(e.target.value))}
+                                value={itemHeight || ''}
+                                onChange={(e) => setItemHeight(Number(e.target.value))}
                               />
                             </div>
                           </div>
-                          <div className="text-sm">
-                            <span className="font-medium">Total Area:</span> {shutterArea} mm² 
-                            ({(shutterArea/1000000).toFixed(2)} m²)
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            <div className="flex items-center">
-                              <Info className="h-4 w-4 mr-1" />
-                              Shutters are priced based on area at ₹21-24 per 1000mm²
+                          
+                          {itemWidth > 0 && itemHeight > 0 && (
+                            <div>
+                              <div className="text-sm">
+                                <span className="font-medium">Total Area:</span> {itemArea.toLocaleString()} mm² 
+                                ({(itemArea/1000000).toFixed(2)} m²)
+                              </div>
+                              
+                              {selectedItemId && (
+                                <div className="text-sm mt-1">
+                                  <span className="font-medium">Price:</span> ₹
+                                  {calculateAreaBasedPrice(
+                                    inventoryData.find(item => item.id === selectedItemId)?.category as ItemCategory,
+                                    itemArea
+                                  ).toFixed(2)}
+                                </div>
+                              )}
+                              
+                              <div className="text-xs text-gray-500 mt-1 flex items-center">
+                                <Info className="h-3 w-3 mr-1 flex-shrink-0" />
+                                <span>
+                                  {selectedItemId && inventoryData.find(item => item.id === selectedItemId)?.category} 
+                                  {' '}are priced at ₹
+                                  {selectedItemId && 
+                                    areaBasedRates[
+                                      inventoryData.find(item => item.id === selectedItemId)?.category as keyof typeof areaBasedRates
+                                    ]?.[selectedSeries]
+                                  } per 1000mm²
+                                </span>
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                       )}
                       
@@ -930,6 +1209,9 @@ const QuotationBuilder = () => {
                         onClick={() => {
                           setSelectedItemId('');
                           setQuantity(1);
+                          setItemWidth(0);
+                          setItemHeight(0);
+                          setItemArea(0);
                           setShowAddItemDialog(false);
                         }}
                       >
@@ -937,7 +1219,7 @@ const QuotationBuilder = () => {
                       </Button>
                       <Button
                         onClick={handleAddItem}
-                        disabled={!selectedItemId || quantity <= 0}
+                        disabled={!selectedItemId || quantity <= 0 || (selectedItemNeedsDimensions() && (itemWidth <= 0 || itemHeight <= 0))}
                         className="bg-alu-primary hover:bg-alu-primary/90"
                       >
                         Add to Quotation
@@ -978,14 +1260,21 @@ const QuotationBuilder = () => {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      selectedItems.map((item) => (
-                        <TableRow key={item.id}>
+                      selectedItems.map((item, index) => (
+                        <TableRow key={`${item.id}-${item.width || ''}-${item.height || ''}-${index}`}>
                           <TableCell>
                             <div>
                               <div className="font-medium">{item.name}</div>
                               <div className="text-xs text-gray-500">{item.category}</div>
-                              {item.description && (
-                                <div className="text-xs text-gray-500 mt-1">{item.description}</div>
+                              {item.width && item.height && item.area && (
+                                <div className="text-xs text-gray-500 mt-1">
+                                  {item.width}mm × {item.height}mm = {item.area.toLocaleString()} mm²
+                                  {item.perUnitPrice && (
+                                    <span className="ml-1">
+                                      (₹{item.perUnitPrice} per 1000mm²)
+                                    </span>
+                                  )}
+                                </div>
                               )}
                             </div>
                           </TableCell>
@@ -995,7 +1284,12 @@ const QuotationBuilder = () => {
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 w-8 p-0"
-                                onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
+                                onClick={() => handleUpdateQuantity(
+                                  item.id, 
+                                  item.quantity - 1,
+                                  item.width,
+                                  item.height
+                                )}
                                 disabled={item.quantity <= 1}
                               >
                                 -
@@ -1005,7 +1299,12 @@ const QuotationBuilder = () => {
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 w-8 p-0"
-                                onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                                onClick={() => handleUpdateQuantity(
+                                  item.id, 
+                                  item.quantity + 1,
+                                  item.width,
+                                  item.height
+                                )}
                               >
                                 +
                               </Button>
@@ -1018,7 +1317,7 @@ const QuotationBuilder = () => {
                               variant="ghost"
                               size="icon"
                               className="text-red-500"
-                              onClick={() => handleRemoveItem(item.id)}
+                              onClick={() => handleRemoveItem(item.id, item.width, item.height)}
                             >
                               <Trash2 size={16} />
                             </Button>
@@ -1146,7 +1445,7 @@ const QuotationBuilder = () => {
                   
                   <Button
                     className="flex flex-col items-center justify-center h-24 text-left p-4 bg-alu-primary hover:bg-alu-primary/90"
-                    onClick={() => handleSaveQuotation('Sent')}
+                    onClick={() => handleEmailQuotation()}
                   >
                     <Mail className="h-8 w-8 mb-2" />
                     <div>
@@ -1161,7 +1460,7 @@ const QuotationBuilder = () => {
                     variant="outline"
                     className="flex items-center"
                     onClick={() => {
-                      toast.success('Quotation is ready to print');
+                      handlePrintPdf();
                       setIsSaveDialogOpen(false);
                     }}
                   >
@@ -1173,7 +1472,7 @@ const QuotationBuilder = () => {
                     variant="outline"
                     className="flex items-center"
                     onClick={() => {
-                      toast.success('Quotation downloaded as PDF');
+                      handleDownloadPdf();
                       setIsSaveDialogOpen(false);
                     }}
                   >
