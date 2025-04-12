@@ -1,14 +1,14 @@
-
-import { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
-const Index = () => {
+type ProtectedRouteProps = {
+  children: React.ReactNode;
+  requireAdmin?: boolean;
+};
+
+const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps) => {
   const { user, isLoading } = useAuth();
-  
-  // This page will simply redirect to the dashboard if authenticated
-  // or to the login page if not
-  
+
   // Show loading state while checking auth
   if (isLoading) {
     return (
@@ -20,13 +20,19 @@ const Index = () => {
       </div>
     );
   }
-  
-  // Redirect based on auth state
-  if (user) {
-    return <Navigate to="/dashboard" replace />;
-  } else {
+
+  // If not logged in, redirect to login
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
+
+  // If admin route but user is not admin, redirect to dashboard
+  if (requireAdmin && user.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Otherwise, render the children
+  return <>{children}</>;
 };
 
-export default Index;
+export default ProtectedRoute;
