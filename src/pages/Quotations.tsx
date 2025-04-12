@@ -1,8 +1,7 @@
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { 
   Plus, 
-  Search, 
   Filter, 
   Download, 
   Printer, 
@@ -17,7 +16,6 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -41,32 +39,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-
-// Types
-type QuotationStatus = 'Draft' | 'Sent' | 'Approved' | 'Rejected';
-
-type Quotation = {
-  id: string;
-  customerName: string;
-  customerEmail: string;
-  date: string;
-  total: number;
-  status: QuotationStatus;
-  items: QuotationItem[];
-};
-
-type QuotationItem = {
-  id: string;
-  name: string;
-  category: string;
-  quantity: number;
-  unit: string;
-  unitPrice: number;
-  totalPrice: number;
-};
+import { downloadQuotationPdf, printQuotationPdf } from '@/utils/pdfGenerator';
+import { emailQuotation } from '@/utils/emailService';
+import { Quotation, QuotationStatus } from '@/types/quotation';
 
 // Mock data
 const quotationsData: Quotation[] = [
@@ -241,25 +225,21 @@ const quotationsData: Quotation[] = [
 const Quotations = () => {
   const navigate = useNavigate();
   const [quotations, setQuotations] = useState<Quotation[]>(quotationsData);
-  const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortField, setSortField] = useState<'date' | 'total'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [quotationToDelete, setQuotationToDelete] = useState<string | null>(null);
+  const [emailRecipient, setEmailRecipient] = useState('');
+  const [isEmailing, setIsEmailing] = useState(false);
   
-  // Filter quotations based on search and status
+  // Filter quotations based on status
   const filteredQuotations = quotations.filter(quotation => {
-    const matchesSearch = 
-      quotation.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      quotation.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      quotation.customerEmail.toLowerCase().includes(searchQuery.toLowerCase());
-    
     const matchesStatus = statusFilter === 'all' || quotation.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
+    return matchesStatus;
   });
   
   // Sort quotations
@@ -294,6 +274,19 @@ const Quotations = () => {
     toast.success('Quotation deleted successfully');
   };
   
+  // Handle email quotation
+  const handleEmailQuotation = async (quotation: Quotation) => {
+    setIsEmailing(true);
+    try {
+      await emailQuotation(quotation, emailRecipient || quotation.customerEmail);
+      setIsEmailDialogOpen(false);
+    } catch (error) {
+      toast.error('Failed to send email. Please try again.');
+    } finally {
+      setIsEmailing(false);
+    }
+  };
+  
   // Get status badge color
   const getStatusColor = (status: QuotationStatus) => {
     switch (status) {
@@ -310,19 +303,6 @@ const Quotations = () => {
     }
   };
   
-  // Mock functions for actions
-  const handleEmailQuotation = (id: string) => {
-    toast.success(`Email sent for Quotation ${id}`);
-  };
-  
-  const handlePrintQuotation = (id: string) => {
-    toast.success(`Printing Quotation ${id}`);
-  };
-  
-  const handleDownloadQuotation = (id: string) => {
-    toast.success(`Downloading Quotation ${id} as PDF`);
-  };
-  
   return (
     <div className="page-container">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
@@ -336,18 +316,8 @@ const Quotations = () => {
         </Button>
       </div>
       
-      {/* Filters and Search */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-          <Input
-            placeholder="Search quotations..."
-            className="pl-10"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row gap-4 mb-6 justify-end">
         <div className="flex items-center gap-2">
           <Filter size={18} className="text-gray-500" />
           <Select
@@ -412,7 +382,7 @@ const Quotations = () => {
                   <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                     <div className="flex flex-col items-center">
                       <FileText size={24} className="mb-2" />
-                      <p>No quotations found. Try adjusting your search or filters.</p>
+                      <p>No quotations found. Try adjusting your filters.</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -427,7 +397,7 @@ const Quotations = () => {
                       </div>
                     </TableCell>
                     <TableCell>{quotation.date}</TableCell>
-                    <TableCell className="text-right">${quotation.total.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">₹{quotation.total.toFixed(2)}</TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(quotation.status)}>
                         {quotation.status}
@@ -449,7 +419,11 @@ const Quotations = () => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleEmailQuotation(quotation.id)}
+                          onClick={() => {
+                            setSelectedQuotation(quotation);
+                            setEmailRecipient(quotation.customerEmail);
+                            setIsEmailDialogOpen(true);
+                          }}
                           title="Email"
                         >
                           <Mail size={16} />
@@ -457,7 +431,7 @@ const Quotations = () => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handlePrintQuotation(quotation.id)}
+                          onClick={() => printQuotationPdf(quotation)}
                           title="Print"
                         >
                           <Printer size={16} />
@@ -465,7 +439,7 @@ const Quotations = () => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDownloadQuotation(quotation.id)}
+                          onClick={() => downloadQuotationPdf(quotation)}
                           title="Download"
                         >
                           <Download size={16} />
@@ -530,8 +504,8 @@ const Quotations = () => {
                         <TableHead>Item</TableHead>
                         <TableHead>Category</TableHead>
                         <TableHead className="text-right">Quantity</TableHead>
-                        <TableHead className="text-right">Unit Price</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
+                        <TableHead className="text-right">Unit Price (₹)</TableHead>
+                        <TableHead className="text-right">Total (₹)</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -540,13 +514,13 @@ const Quotations = () => {
                           <TableCell>{item.name}</TableCell>
                           <TableCell>{item.category}</TableCell>
                           <TableCell className="text-right">{item.quantity} {item.unit}</TableCell>
-                          <TableCell className="text-right">${item.unitPrice.toFixed(2)}</TableCell>
-                          <TableCell className="text-right">${item.totalPrice.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">₹{item.unitPrice.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">₹{item.totalPrice.toFixed(2)}</TableCell>
                         </TableRow>
                       ))}
                       <TableRow>
                         <TableCell colSpan={4} className="text-right font-bold">Total</TableCell>
-                        <TableCell className="text-right font-bold">${selectedQuotation.total.toFixed(2)}</TableCell>
+                        <TableCell className="text-right font-bold">₹{selectedQuotation.total.toFixed(2)}</TableCell>
                       </TableRow>
                     </TableBody>
                   </Table>
@@ -557,20 +531,24 @@ const Quotations = () => {
             <DialogFooter className="space-x-2">
               <Button
                 variant="outline"
-                onClick={() => handleEmailQuotation(selectedQuotation.id)}
+                onClick={() => {
+                  setIsViewDialogOpen(false);
+                  setEmailRecipient(selectedQuotation.customerEmail);
+                  setIsEmailDialogOpen(true);
+                }}
               >
                 <Mail className="mr-2 h-4 w-4" />
                 Email
               </Button>
               <Button
                 variant="outline"
-                onClick={() => handlePrintQuotation(selectedQuotation.id)}
+                onClick={() => printQuotationPdf(selectedQuotation)}
               >
                 <Printer className="mr-2 h-4 w-4" />
                 Print
               </Button>
               <Button
-                onClick={() => handleDownloadQuotation(selectedQuotation.id)}
+                onClick={() => downloadQuotationPdf(selectedQuotation)}
                 className="bg-alu-primary hover:bg-alu-primary/90"
               >
                 <Download className="mr-2 h-4 w-4" />
@@ -580,6 +558,51 @@ const Quotations = () => {
           </DialogContent>
         </Dialog>
       )}
+      
+      {/* Email Dialog */}
+      <Dialog open={isEmailDialogOpen} onOpenChange={setIsEmailDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Email Quotation</DialogTitle>
+            <DialogDescription>
+              Send this quotation to the customer or other recipients.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="recipient" className="text-sm font-medium">
+                Recipient Email
+              </label>
+              <Input
+                id="recipient"
+                type="email"
+                value={emailRecipient}
+                onChange={(e) => setEmailRecipient(e.target.value)}
+                placeholder="customer@example.com"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline" 
+              onClick={() => setIsEmailDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button"
+              onClick={() => selectedQuotation && handleEmailQuotation(selectedQuotation)}
+              className="bg-alu-primary hover:bg-alu-primary/90"
+              disabled={isEmailing}
+            >
+              {isEmailing ? 'Sending...' : 'Send Email'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

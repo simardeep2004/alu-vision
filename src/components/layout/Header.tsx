@@ -1,8 +1,7 @@
 
 import { useState } from 'react';
-import { Bell, Search, User } from 'lucide-react';
+import { Bell, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,29 +13,15 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 
 const Header = () => {
-  const [searchQuery, setSearchQuery] = useState('');
   const { user, logout } = useAuth();
-  
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Searching for:', searchQuery);
-    // Implement search functionality
-  };
   
   return (
     <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 flex items-center justify-between sticky top-0 z-10">
-      {/* Left section - Search */}
-      <div className="lg:w-96 w-auto md:block hidden">
-        <form onSubmit={handleSearch} className="relative">
-          <Input
-            type="search"
-            placeholder="Search..."
-            className="pl-9 pr-4 py-2 w-full"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-        </form>
+      {/* Left section - empty or could contain logo/title */}
+      <div className="flex items-center">
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 hidden md:block">
+          TheAluVision
+        </h2>
       </div>
       
       {/* Right section - User actions */}
