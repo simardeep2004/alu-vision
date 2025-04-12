@@ -9,6 +9,10 @@ export type QuotationItem = {
   unit: string;
   unitPrice: number;
   totalPrice: number;
+  // Add dimensions for shutters
+  width?: number;
+  height?: number;
+  area?: number;
 };
 
 export type Quotation = {

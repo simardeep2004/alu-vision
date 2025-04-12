@@ -11,7 +11,8 @@ import {
   Percent,
   Calculator,
   Info,
-  Search
+  Search,
+  Ruler
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -313,7 +314,10 @@ const QuotationBuilder = () => {
   const [wastagePercent, setWastagePercent] = useState<number>(5);
   const [taxPercent, setTaxPercent] = useState<number>(18); // GST
   const [discountPercent, setDiscountPercent] = useState<number>(0);
-  
+  const [shutterWidth, setShutterWidth] = useState<number>(0);
+  const [shutterHeight, setShutterHeight] = useState<number>(0);
+  const [shutterArea, setShutterArea] = useState<number>(0);
+
   // Pricing multipliers based on series
   const seriesMultipliers = {
     'standard': 1.0,
@@ -838,6 +842,50 @@ const QuotationBuilder = () => {
                           </TableBody>
                         </Table>
                       </div>
+                      
+                      {/* Dimensions section - Only show for shutters */}
+                      {selectedItemId && inventoryData.find(item => item.id === selectedItemId)?.category === 'Shutter' && (
+                        <div className="grid gap-4 p-4 bg-gray-50 rounded-lg border">
+                          <h3 className="font-medium flex items-center">
+                            <Ruler className="h-4 w-4 mr-2" />
+                            Shutter Dimensions
+                          </h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="width">Width (mm)</Label>
+                              <Input
+                                id="width"
+                                type="number"
+                                min={100}
+                                max={5000}
+                                value={shutterWidth}
+                                onChange={(e) => setShutterWidth(Number(e.target.value))}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="height">Height (mm)</Label>
+                              <Input
+                                id="height"
+                                type="number"
+                                min={100}
+                                max={5000}
+                                value={shutterHeight}
+                                onChange={(e) => setShutterHeight(Number(e.target.value))}
+                              />
+                            </div>
+                          </div>
+                          <div className="text-sm">
+                            <span className="font-medium">Total Area:</span> {shutterArea} mm² 
+                            ({(shutterArea/1000000).toFixed(2)} m²)
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            <div className="flex items-center">
+                              <Info className="h-4 w-4 mr-1" />
+                              Shutters are priced based on area at ₹21-24 per 1000mm²
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       
                       {/* Quantity */}
                       <div className="grid gap-2">

@@ -37,14 +37,23 @@ export const generateQuotationPdf = (quotation: Quotation): jsPDF => {
   doc.text(`Email: ${quotation.customerEmail}`, 130, 55);
   
   // Quotation items table
-  const tableColumn = ["Item", "Category", "Quantity", "Unit Price (₹)", "Total (₹)"];
-  const tableRows = quotation.items.map(item => [
-    item.name,
-    item.category,
-    `${item.quantity} ${item.unit}`,
-    `₹${item.unitPrice.toFixed(2)}`,
-    `₹${item.totalPrice.toFixed(2)}`
-  ]);
+  const tableColumn = ["Item", "Category", "Specifications", "Quantity", "Unit Price (₹)", "Total (₹)"];
+  const tableRows = quotation.items.map(item => {
+    // Generate specs text based on item type
+    let specs = '';
+    if (item.category === 'Shutter' && item.width && item.height) {
+      specs = `${item.width}mm × ${item.height}mm = ${item.area}mm²`;
+    }
+    
+    return [
+      item.name,
+      item.category,
+      specs,
+      `${item.quantity} ${item.unit}`,
+      `₹${item.unitPrice.toFixed(2)}`,
+      `₹${item.totalPrice.toFixed(2)}`
+    ];
+  });
   
   doc.autoTable({
     head: [tableColumn],
@@ -74,12 +83,20 @@ export const generateQuotationPdf = (quotation: Quotation): jsPDF => {
 };
 
 export const downloadQuotationPdf = (quotation: Quotation): void => {
-  const doc = generateQuotationPdf(quotation);
-  doc.save(`Quotation-${quotation.id}.pdf`);
+  try {
+    const doc = generateQuotationPdf(quotation);
+    doc.save(`Quotation-${quotation.id}.pdf`);
+  } catch (error) {
+    console.error("Error downloading PDF:", error);
+  }
 };
 
 export const printQuotationPdf = (quotation: Quotation): void => {
-  const doc = generateQuotationPdf(quotation);
-  doc.autoPrint();
-  window.open(doc.output('bloburl'), '_blank');
+  try {
+    const doc = generateQuotationPdf(quotation);
+    doc.autoPrint();
+    window.open(doc.output('bloburl'), '_blank');
+  } catch (error) {
+    console.error("Error printing PDF:", error);
+  }
 };
