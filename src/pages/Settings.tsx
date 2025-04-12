@@ -1,555 +1,403 @@
 
 import { useState } from 'react';
 import { 
-  Save, 
-  UserCircle, 
-  Lock, 
+  User, 
+  Languages, 
+  Moon, 
+  Sun, 
   Bell, 
-  Globe, 
-  Palette,
-  Language,
-  Eye,
-  EyeOff
+  Shield, 
+  Lock,
+  CreditCard,
+  Trash2,
+  Save 
 } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { useAuth } from '@/hooks/useAuth';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
 
 const Settings = () => {
   const { user } = useAuth();
-  
-  // Profile settings
-  const [profileForm, setProfileForm] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    phone: '+1 (555) 123-4567',
-    company: 'Acme Aluminum & Glass',
-    bio: 'Experienced professional in the aluminum and glass industry.',
-  });
-  
-  // Security settings
-  const [securityForm, setSecurityForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
-  
-  // Show password state
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
-  // Notification settings
-  const [notificationSettings, setNotificationSettings] = useState({
-    emailNotifications: true,
+  const [theme, setTheme] = useState('system');
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [language, setLanguage] = useState('english');
+  const [notifications, setNotifications] = useState({
+    emailAlerts: true,
     stockAlerts: true,
-    quotationUpdates: true,
+    quotationAlerts: true,
     marketingEmails: false,
   });
   
-  // Appearance settings
-  const [themePreference, setThemePreference] = useState('system');
-  const [densityPreference, setDensityPreference] = useState('default');
-  
-  // System settings
-  const [systemSettings, setSystemSettings] = useState({
-    language: 'english',
-    dateFormat: 'MM/DD/YYYY',
-    timezone: 'America/New_York',
-    currency: 'USD',
-  });
-  
-  // Update profile handler
-  const handleUpdateProfile = () => {
-    // Validate
-    if (!profileForm.name || !profileForm.email) {
-      toast.error('Name and email are required');
-      return;
-    }
-    
-    toast.success('Profile updated successfully');
+  const handleSaveProfile = () => {
+    toast.success('Profile settings saved successfully');
   };
   
-  // Update password handler
-  const handleUpdatePassword = () => {
-    // Validate
-    if (!securityForm.currentPassword) {
-      toast.error('Current password is required');
-      return;
-    }
-    
-    if (!securityForm.newPassword || !securityForm.confirmPassword) {
-      toast.error('New password and confirmation are required');
-      return;
-    }
-    
-    if (securityForm.newPassword !== securityForm.confirmPassword) {
-      toast.error('New passwords do not match');
-      return;
-    }
-    
-    if (securityForm.newPassword.length < 8) {
-      toast.error('Password must be at least 8 characters');
-      return;
-    }
-    
-    // Reset form
-    setSecurityForm({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-    });
-    
-    toast.success('Password updated successfully');
+  const handleSaveAppearance = () => {
+    toast.success('Appearance settings saved successfully');
   };
   
-  // Toggle notification setting
-  const toggleNotification = (setting: keyof typeof notificationSettings) => {
-    setNotificationSettings({
-      ...notificationSettings,
-      [setting]: !notificationSettings[setting],
-    });
+  const handleSaveNotifications = () => {
+    toast.success('Notification preferences saved successfully');
   };
   
   return (
-    <div className="page-container">
+    <div className="page-container max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Settings</h1>
       
-      <Tabs defaultValue="profile">
-        <TabsList className="grid w-full grid-cols-5 mb-8">
-          <TabsTrigger value="profile" className="flex items-center">
-            <UserCircle className="h-4 w-4 mr-2" />
-            Profile
+      <Tabs defaultValue="profile" className="w-full">
+        <TabsList className="grid grid-cols-4 mb-8">
+          <TabsTrigger value="profile" className="flex items-center gap-2">
+            <User size={16} /> Profile
           </TabsTrigger>
-          <TabsTrigger value="security" className="flex items-center">
-            <Lock className="h-4 w-4 mr-2" />
-            Security
+          <TabsTrigger value="appearance" className="flex items-center gap-2">
+            <Sun size={16} /> Appearance
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex items-center">
-            <Bell className="h-4 w-4 mr-2" />
-            Notifications
+          <TabsTrigger value="notifications" className="flex items-center gap-2">
+            <Bell size={16} /> Notifications
           </TabsTrigger>
-          <TabsTrigger value="appearance" className="flex items-center">
-            <Palette className="h-4 w-4 mr-2" />
-            Appearance
-          </TabsTrigger>
-          <TabsTrigger value="system" className="flex items-center">
-            <Globe className="h-4 w-4 mr-2" />
-            System
+          <TabsTrigger value="security" className="flex items-center gap-2">
+            <Shield size={16} /> Security
           </TabsTrigger>
         </TabsList>
         
         {/* Profile Tab */}
         <TabsContent value="profile">
-          <Card className="glass-card">
+          <Card>
             <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
+              <CardTitle>Profile Settings</CardTitle>
               <CardDescription>
-                Update your profile information and contact details
+                Manage your personal information and account settings
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    value={profileForm.name}
-                    onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={profileForm.email}
-                    onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    value={profileForm.phone}
-                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="company">Company</Label>
-                  <Input
-                    id="company"
-                    value={profileForm.company}
-                    onChange={(e) => setProfileForm({ ...profileForm, company: e.target.value })}
-                  />
-                </div>
-              </div>
-              
               <div className="space-y-2">
-                <Label htmlFor="bio">Bio</Label>
-                <Textarea
-                  id="bio"
-                  value={profileForm.bio}
-                  onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
-                  rows={4}
+                <Label htmlFor="name">Full Name</Label>
+                <Input 
+                  id="name" 
+                  value={name} 
+                  onChange={(e) => setName(e.target.value)} 
+                  placeholder="Your Name"
                 />
               </div>
               
-              <div className="flex justify-end">
-                <Button 
-                  onClick={handleUpdateProfile}
-                  className="bg-alu-primary hover:bg-alu-primary/90"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Changes
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        {/* Security Tab */}
-        <TabsContent value="security">
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle>Password & Security</CardTitle>
-              <CardDescription>
-                Update your password and security settings
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="current-password">Current Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="current-password"
-                      type={showCurrentPassword ? "text" : "password"}
-                      value={securityForm.currentPassword}
-                      onChange={(e) => setSecurityForm({ ...securityForm, currentPassword: e.target.value })}
-                      className="pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    >
-                      {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="new-password">New Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="new-password"
-                      type={showNewPassword ? "text" : "password"}
-                      value={securityForm.newPassword}
-                      onChange={(e) => setSecurityForm({ ...securityForm, newPassword: e.target.value })}
-                      className="pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                    >
-                      {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    Password must be at least 8 characters long
-                  </p>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirm New Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="confirm-password"
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={securityForm.confirmPassword}
-                      onChange={(e) => setSecurityForm({ ...securityForm, confirmPassword: e.target.value })}
-                      className="pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </Button>
-                  </div>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input 
+                  id="email" 
+                  type="email" 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                  placeholder="your.email@example.com"
+                />
               </div>
               
-              <div className="flex justify-end">
-                <Button 
-                  onClick={handleUpdatePassword}
-                  className="bg-alu-primary hover:bg-alu-primary/90"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  Update Password
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        {/* Notifications Tab */}
-        <TabsContent value="notifications">
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle>Notification Preferences</CardTitle>
-              <CardDescription>
-                Manage how you receive notifications and alerts
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium">Email Notifications</h3>
-                    <p className="text-sm text-gray-500">
-                      Receive email notifications for important updates
-                    </p>
-                  </div>
-                  <Switch
-                    checked={notificationSettings.emailNotifications}
-                    onCheckedChange={() => toggleNotification('emailNotifications')}
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium">Low Stock Alerts</h3>
-                    <p className="text-sm text-gray-500">
-                      Get notified when inventory items are running low
-                    </p>
-                  </div>
-                  <Switch
-                    checked={notificationSettings.stockAlerts}
-                    onCheckedChange={() => toggleNotification('stockAlerts')}
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium">Quotation Updates</h3>
-                    <p className="text-sm text-gray-500">
-                      Receive notifications when quotations are created or updated
-                    </p>
-                  </div>
-                  <Switch
-                    checked={notificationSettings.quotationUpdates}
-                    onCheckedChange={() => toggleNotification('quotationUpdates')}
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium">Marketing Emails</h3>
-                    <p className="text-sm text-gray-500">
-                      Receive promotional emails and newsletters
-                    </p>
-                  </div>
-                  <Switch
-                    checked={notificationSettings.marketingEmails}
-                    onCheckedChange={() => toggleNotification('marketingEmails')}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="language">Language</Label>
+                <Select value={language} onValueChange={setLanguage}>
+                  <SelectTrigger id="language">
+                    <SelectValue placeholder="Select language" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="english">English</SelectItem>
+                    <SelectItem value="hindi">Hindi</SelectItem>
+                    <SelectItem value="tamil">Tamil</SelectItem>
+                    <SelectItem value="telugu">Telugu</SelectItem>
+                    <SelectItem value="marathi">Marathi</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
-              <div className="flex justify-end">
-                <Button 
-                  onClick={() => toast.success('Notification preferences saved')}
-                  className="bg-alu-primary hover:bg-alu-primary/90"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Preferences
-                </Button>
+              <div className="pt-4">
+                <h3 className="text-sm font-medium mb-3">Linked Accounts</h3>
+                <div className="flex items-center justify-between py-2">
+                  <div className="flex items-center gap-2">
+                    <CreditCard size={20} className="text-gray-400" />
+                    <span>Payment Methods</span>
+                  </div>
+                  <Button variant="outline" size="sm">Manage</Button>
+                </div>
               </div>
             </CardContent>
+            <CardFooter className="flex justify-between">
+              <Button
+                variant="outline"
+                className="text-red-500 hover:text-red-600 hover:bg-red-50"
+              >
+                <Trash2 size={16} className="mr-2" />
+                Delete Account
+              </Button>
+              <Button 
+                onClick={handleSaveProfile}
+                className="bg-alu-primary hover:bg-alu-primary/90"
+              >
+                <Save size={16} className="mr-2" />
+                Save Changes
+              </Button>
+            </CardFooter>
           </Card>
         </TabsContent>
         
         {/* Appearance Tab */}
         <TabsContent value="appearance">
-          <Card className="glass-card">
+          <Card>
             <CardHeader>
               <CardTitle>Appearance Settings</CardTitle>
               <CardDescription>
-                Customize how TheAluVision looks
+                Customize the look and feel of the application
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="theme">Theme</Label>
-                  <Select
-                    value={themePreference}
-                    onValueChange={setThemePreference}
+                <h3 className="text-sm font-medium">Theme Preference</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div 
+                    className={`border rounded-lg p-4 cursor-pointer transition flex flex-col items-center gap-2 ${theme === 'light' ? 'border-alu-primary bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700'}`}
+                    onClick={() => setTheme('light')}
                   >
-                    <SelectTrigger id="theme">
-                      <SelectValue placeholder="Select theme" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="light">Light</SelectItem>
-                      <SelectItem value="dark">Dark</SelectItem>
-                      <SelectItem value="system">System Default</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="density">UI Density</Label>
-                  <Select
-                    value={densityPreference}
-                    onValueChange={setDensityPreference}
+                    <Sun size={24} className="text-alu-primary" />
+                    <span>Light</span>
+                  </div>
+                  
+                  <div 
+                    className={`border rounded-lg p-4 cursor-pointer transition flex flex-col items-center gap-2 ${theme === 'dark' ? 'border-alu-primary bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700'}`}
+                    onClick={() => setTheme('dark')}
                   >
-                    <SelectTrigger id="density">
-                      <SelectValue placeholder="Select density" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="compact">Compact</SelectItem>
-                      <SelectItem value="default">Default</SelectItem>
-                      <SelectItem value="comfortable">Comfortable</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-gray-500">
-                    Controls the spacing between elements
-                  </p>
+                    <Moon size={24} className="text-alu-primary" />
+                    <span>Dark</span>
+                  </div>
+                  
+                  <div 
+                    className={`border rounded-lg p-4 cursor-pointer transition flex flex-col items-center gap-2 ${theme === 'system' ? 'border-alu-primary bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700'}`}
+                    onClick={() => setTheme('system')}
+                  >
+                    <div className="flex">
+                      <Sun size={24} className="text-alu-primary" />
+                      <Moon size={24} className="text-alu-primary -ml-2" />
+                    </div>
+                    <span>System</span>
+                  </div>
                 </div>
               </div>
               
-              <div className="flex justify-end">
-                <Button 
-                  onClick={() => toast.success('Appearance settings saved')}
-                  className="bg-alu-primary hover:bg-alu-primary/90"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Settings
-                </Button>
+              <Separator />
+              
+              <div className="space-y-4">
+                <Label htmlFor="density">Interface Density</Label>
+                <Select defaultValue="regular">
+                  <SelectTrigger id="density">
+                    <SelectValue placeholder="Select density" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="compact">Compact</SelectItem>
+                    <SelectItem value="regular">Regular</SelectItem>
+                    <SelectItem value="comfortable">Comfortable</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-4">
+                <Label htmlFor="fontSize">Font Size</Label>
+                <Select defaultValue="medium">
+                  <SelectTrigger id="fontSize">
+                    <SelectValue placeholder="Select font size" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="small">Small</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="large">Large</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
+            <CardFooter className="flex justify-end">
+              <Button 
+                onClick={handleSaveAppearance}
+                className="bg-alu-primary hover:bg-alu-primary/90"
+              >
+                <Save size={16} className="mr-2" />
+                Save Preferences
+              </Button>
+            </CardFooter>
           </Card>
         </TabsContent>
         
-        {/* System Tab */}
-        <TabsContent value="system">
-          <Card className="glass-card">
+        {/* Notifications Tab */}
+        <TabsContent value="notifications">
+          <Card>
             <CardHeader>
-              <CardTitle>System Preferences</CardTitle>
+              <CardTitle>Notification Settings</CardTitle>
               <CardDescription>
-                Configure system-wide settings
+                Manage how and when you receive notifications
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="language">Language</Label>
-                  <Select
-                    value={systemSettings.language}
-                    onValueChange={(value) => setSystemSettings({ ...systemSettings, language: value })}
-                  >
-                    <SelectTrigger id="language">
-                      <SelectValue placeholder="Select language" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="english">English</SelectItem>
-                      <SelectItem value="spanish">Spanish</SelectItem>
-                      <SelectItem value="french">French</SelectItem>
-                      <SelectItem value="german">German</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="date-format">Date Format</Label>
-                  <Select
-                    value={systemSettings.dateFormat}
-                    onValueChange={(value) => setSystemSettings({ ...systemSettings, dateFormat: value })}
-                  >
-                    <SelectTrigger id="date-format">
-                      <SelectValue placeholder="Select date format" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
-                      <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
-                      <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="timezone">Timezone</Label>
-                  <Select
-                    value={systemSettings.timezone}
-                    onValueChange={(value) => setSystemSettings({ ...systemSettings, timezone: value })}
-                  >
-                    <SelectTrigger id="timezone">
-                      <SelectValue placeholder="Select timezone" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="America/New_York">Eastern Time (ET)</SelectItem>
-                      <SelectItem value="America/Chicago">Central Time (CT)</SelectItem>
-                      <SelectItem value="America/Denver">Mountain Time (MT)</SelectItem>
-                      <SelectItem value="America/Los_Angeles">Pacific Time (PT)</SelectItem>
-                      <SelectItem value="Europe/London">London (GMT)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="currency">Currency</Label>
-                  <Select
-                    value={systemSettings.currency}
-                    onValueChange={(value) => setSystemSettings({ ...systemSettings, currency: value })}
-                  >
-                    <SelectTrigger id="currency">
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">US Dollar ($)</SelectItem>
-                      <SelectItem value="EUR">Euro (€)</SelectItem>
-                      <SelectItem value="GBP">British Pound (£)</SelectItem>
-                      <SelectItem value="CAD">Canadian Dollar (CAD)</SelectItem>
-                      <SelectItem value="AUD">Australian Dollar (AUD)</SelectItem>
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium">Email Notifications</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="email-alerts" className="flex-1">
+                      Email Alerts
+                      <p className="text-sm text-gray-500 font-normal">
+                        Receive important alerts via email
+                      </p>
+                    </Label>
+                    <Switch 
+                      id="email-alerts" 
+                      checked={notifications.emailAlerts}
+                      onCheckedChange={(checked) => setNotifications({...notifications, emailAlerts: checked})}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="stock-alerts" className="flex-1">
+                      Low Stock Alerts
+                      <p className="text-sm text-gray-500 font-normal">
+                        Get notified when inventory levels are low
+                      </p>
+                    </Label>
+                    <Switch 
+                      id="stock-alerts" 
+                      checked={notifications.stockAlerts}
+                      onCheckedChange={(checked) => setNotifications({...notifications, stockAlerts: checked})}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="quotation-alerts" className="flex-1">
+                      Quotation Updates
+                      <p className="text-sm text-gray-500 font-normal">
+                        Notifications for new or updated quotations
+                      </p>
+                    </Label>
+                    <Switch 
+                      id="quotation-alerts" 
+                      checked={notifications.quotationAlerts}
+                      onCheckedChange={(checked) => setNotifications({...notifications, quotationAlerts: checked})}
+                    />
+                  </div>
                 </div>
               </div>
               
-              <div className="flex justify-end">
-                <Button 
-                  onClick={() => toast.success('System preferences saved')}
-                  className="bg-alu-primary hover:bg-alu-primary/90"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Preferences
-                </Button>
+              <Separator />
+              
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium">Marketing Communications</h3>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="marketing-emails" className="flex-1">
+                    Marketing Emails
+                    <p className="text-sm text-gray-500 font-normal">
+                      Receive special offers and updates
+                    </p>
+                  </Label>
+                  <Switch 
+                    id="marketing-emails" 
+                    checked={notifications.marketingEmails}
+                    onCheckedChange={(checked) => setNotifications({...notifications, marketingEmails: checked})}
+                  />
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-end">
+              <Button 
+                onClick={handleSaveNotifications}
+                className="bg-alu-primary hover:bg-alu-primary/90"
+              >
+                <Save size={16} className="mr-2" />
+                Save Preferences
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+        
+        {/* Security Tab */}
+        <TabsContent value="security">
+          <Card>
+            <CardHeader>
+              <CardTitle>Security Settings</CardTitle>
+              <CardDescription>
+                Manage your account security and privacy settings
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium">Change Password</h3>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="current-password">Current Password</Label>
+                    <Input id="current-password" type="password" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password">New Password</Label>
+                    <Input id="new-password" type="password" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirm New Password</Label>
+                    <Input id="confirm-password" type="password" />
+                  </div>
+                  <Button 
+                    onClick={() => toast.success('Password updated successfully')}
+                    className="mt-2 bg-alu-primary hover:bg-alu-primary/90"
+                  >
+                    <Lock size={16} className="mr-2" />
+                    Update Password
+                  </Button>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium">Two-Factor Authentication</h3>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <p>Enhance your account security with 2FA</p>
+                    <p className="text-sm text-gray-500">
+                      Two-factor authentication adds an extra layer of security to your account
+                    </p>
+                  </div>
+                  <Button 
+                    variant="outline"
+                    onClick={() => toast.info('This feature is coming soon!')}
+                  >
+                    Enable 2FA
+                  </Button>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium">Login Sessions</h3>
+                <div className="space-y-2">
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-medium">Current Session</p>
+                        <p className="text-sm text-gray-500">Windows • Chrome • New Delhi, India</p>
+                        <p className="text-xs text-gray-400 mt-1">Started: {new Date().toLocaleDateString()}</p>
+                      </div>
+                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
+                        Active
+                      </Badge>
+                    </div>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50 mt-2"
+                    onClick={() => toast.info('This feature is coming soon!')}
+                  >
+                    <Trash2 size={16} className="mr-2" />
+                    Logout All Other Devices
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -65,7 +65,7 @@ const inventoryData: InventoryItem[] = [
     category: 'Profiles',
     quantity: 150,
     unit: 'pcs',
-    price: 45.99,
+    price: 2999.99,
     status: 'In Stock',
     lastUpdated: '2023-10-15',
   },
@@ -75,7 +75,7 @@ const inventoryData: InventoryItem[] = [
     category: 'Glass',
     quantity: 80,
     unit: 'sqm',
-    price: 25.50,
+    price: 1800.50,
     status: 'In Stock',
     lastUpdated: '2023-10-12',
   },
@@ -85,7 +85,7 @@ const inventoryData: InventoryItem[] = [
     category: 'Accessories',
     quantity: 12,
     unit: 'pcs',
-    price: 8.75,
+    price: 599.75,
     status: 'Low Stock',
     lastUpdated: '2023-10-10',
   },
@@ -95,7 +95,7 @@ const inventoryData: InventoryItem[] = [
     category: 'Hardware',
     quantity: 0,
     unit: 'sets',
-    price: 65.00,
+    price: 4500.00,
     status: 'Out of Stock',
     lastUpdated: '2023-09-30',
   },
@@ -105,7 +105,7 @@ const inventoryData: InventoryItem[] = [
     category: 'Glass',
     quantity: 45,
     unit: 'sqm',
-    price: 35.75,
+    price: 2400.75,
     status: 'In Stock',
     lastUpdated: '2023-10-14',
   },
@@ -115,7 +115,7 @@ const inventoryData: InventoryItem[] = [
     category: 'Accessories',
     quantity: 200,
     unit: 'pcs',
-    price: 2.50,
+    price: 180.50,
     status: 'In Stock',
     lastUpdated: '2023-10-08',
   },
@@ -125,7 +125,7 @@ const inventoryData: InventoryItem[] = [
     category: 'Profiles',
     quantity: 8,
     unit: 'pcs',
-    price: 52.25,
+    price: 3499.25,
     status: 'Low Stock',
     lastUpdated: '2023-10-05',
   },
@@ -135,7 +135,7 @@ const inventoryData: InventoryItem[] = [
     category: 'Consumables',
     quantity: 25,
     unit: 'tubes',
-    price: 7.99,
+    price: 499.99,
     status: 'In Stock',
     lastUpdated: '2023-10-13',
   },
@@ -199,6 +199,13 @@ const Inventory = () => {
     
     const updatedItems = items.map(item => {
       if (item.id === editItem.id) {
+        const status: 'In Stock' | 'Low Stock' | 'Out of Stock' = 
+          formData.quantity === 0 
+            ? 'Out of Stock' 
+            : formData.quantity < 20 
+              ? 'Low Stock' 
+              : 'In Stock';
+        
         return {
           ...item,
           name: formData.name,
@@ -206,7 +213,7 @@ const Inventory = () => {
           quantity: formData.quantity,
           unit: formData.unit,
           price: formData.price,
-          status: formData.quantity === 0 ? 'Out of Stock' : formData.quantity < 20 ? 'Low Stock' : 'In Stock',
+          status,
           lastUpdated: new Date().toISOString().split('T')[0],
         };
       }
@@ -337,7 +344,7 @@ const Inventory = () => {
                     <TableCell>{item.name}</TableCell>
                     <TableCell>{item.category}</TableCell>
                     <TableCell className="text-right">{item.quantity} {item.unit}</TableCell>
-                    <TableCell className="text-right">${item.price.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">₹{item.price.toFixed(2)}</TableCell>
                     <TableCell>
                       <Badge
                         className={`
@@ -454,7 +461,7 @@ const Inventory = () => {
               </div>
               
               <div className="grid gap-2">
-                <Label htmlFor="price">Price (USD)</Label>
+                <Label htmlFor="price">Price (₹)</Label>
                 <Input
                   id="price"
                   type="number"
@@ -561,7 +568,7 @@ const Inventory = () => {
               </div>
               
               <div className="grid gap-2">
-                <Label htmlFor="edit-price">Price (USD)</Label>
+                <Label htmlFor="edit-price">Price (₹)</Label>
                 <Input
                   id="edit-price"
                   type="number"
