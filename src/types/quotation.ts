@@ -6,15 +6,17 @@ export type QuotationItem = {
   name: string;
   category: string;
   quantity: number;
-  unit: string;
+  unit: string;  // Unit type (pcs, set, etc.)
   unitPrice: number;
   totalPrice: number;
   // Add dimensions for measured items
-  width?: number;
-  height?: number;
-  area?: number;
+  width?: number;  // Width in mm
+  height?: number;  // Height in mm
+  area?: number;  // Area in mm²
   // Per unit pricing (for area-based calculations)
-  perUnitPrice?: number;
+  perUnitPrice?: number;  // Price per 1000mm²
+  description?: string;
+  discount?: number;  // Discount percentage for this item
 };
 
 export type Quotation = {
