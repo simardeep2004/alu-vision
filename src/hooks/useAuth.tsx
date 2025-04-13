@@ -1,15 +1,16 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-// Types
+// Updated User type to match Supabase profile
 export type User = {
   id: string;
-  name: string;
   email: string;
+  full_name?: string;
+  avatar_url?: string;
   role: 'user' | 'admin';
-  isAdmin: boolean; // Add isAdmin property
 };
 
 type AuthContextType = {
@@ -18,25 +19,8 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
+  updateProfile: (profile: Partial<User>) => Promise<void>;
 };
-
-// Mock data for demonstration
-const MOCK_USERS = [
-  {
-    id: '1',
-    name: 'Admin User',
-    email: 'admin@aluvision.com',
-    password: 'admin123',
-    role: 'admin' as const,
-  },
-  {
-    id: '2',
-    name: 'Test User',
-    email: 'user@aluvision.com',
-    password: 'user123',
-    role: 'user' as const,
-  },
-];
 
 // Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -50,55 +34,77 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Check for saved user on mount
   useEffect(() => {
-    const savedUser = localStorage.getItem('aluvision_user');
-    if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        // Add isAdmin property based on role
+    const fetchUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        // Fetch additional profile information
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profileError) {
+          console.error('Error fetching profile:', profileError);
+        }
+
         setUser({
-          ...parsedUser,
-          isAdmin: parsedUser.role === 'admin'
+          id: session.user.id,
+          email: session.user.email || '',
+          full_name: profileData?.full_name || '',
+          avatar_url: profileData?.avatar_url || '',
+          role: session.user.email === 'admin@aluvision.com' ? 'admin' : 'user'
         });
-      } catch (error) {
-        console.error('Failed to parse saved user:', error);
-        localStorage.removeItem('aluvision_user');
       }
-    }
-    setIsLoading(false);
+      
+      setIsLoading(false);
+    };
+
+    fetchUser();
+
+    // Set up auth state change listener
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          setUser({
+            id: session.user.id,
+            email: session.user.email || '',
+            full_name: profileData?.full_name || '',
+            avatar_url: profileData?.avatar_url || '',
+            role: session.user.email === 'admin@aluvision.com' ? 'admin' : 'user'
+          });
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+        }
+      }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   // Login function
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Find user by email and password
-      const foundUser = MOCK_USERS.find(
-        u => u.email === email && u.password === password
-      );
-      
-      if (!foundUser) {
-        throw new Error('Invalid email or password');
-      }
-      
-      // Create user object without password
-      const { password: _, ...userWithoutPassword } = foundUser;
-      
-      // Add isAdmin property based on role
-      const userWithIsAdmin = {
-        ...userWithoutPassword,
-        isAdmin: userWithoutPassword.role === 'admin'
-      };
-      
-      // Save user to state and localStorage
-      setUser(userWithIsAdmin);
-      localStorage.setItem('aluvision_user', JSON.stringify(userWithIsAdmin));
-      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
+
       toast.success('Logged in successfully');
       
-      // Get redirect path from location state or default to dashboard
+      // Navigate to dashboard or previous page
       const from = location.state?.from?.pathname || '/dashboard';
       navigate(from, { replace: true });
     } catch (error) {
@@ -113,27 +119,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signup = async (name: string, email: string, password: string) => {
     setIsLoading(true);
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Check if email already exists
-      if (MOCK_USERS.some(u => u.email === email)) {
-        throw new Error('Email already in use');
-      }
-      
-      // Create new user (in a real app, this would be done on the backend)
-      const newUser = {
-        id: Math.random().toString(36).substr(2, 9),
-        name,
+      const { data, error } = await supabase.auth.signUp({
         email,
-        role: 'user' as const,
-        isAdmin: false // Default to not admin
-      };
-      
-      // Save user to state and localStorage
-      setUser(newUser);
-      localStorage.setItem('aluvision_user', JSON.stringify(newUser));
-      
+        password,
+        options: {
+          data: {
+            name
+          }
+        }
+      });
+
+      if (error) throw error;
+
       toast.success('Account created successfully');
       navigate('/dashboard');
     } catch (error) {
@@ -145,15 +142,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Logout function
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('aluvision_user');
-    toast.success('Logged out successfully');
-    navigate('/login');
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast.success('Logged out successfully');
+      navigate('/login');
+    } catch (error) {
+      toast.error('Logout failed');
+    }
+  };
+
+  // Update profile function
+  const updateProfile = async (profile: Partial<User>) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: profile.full_name,
+          avatar_url: profile.avatar_url
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      // Update local user state
+      setUser(prev => prev ? { ...prev, ...profile } : null);
+      
+      toast.success('Profile updated successfully');
+    } catch (error) {
+      toast.error('Failed to update profile');
+      throw error;
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, signup, logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      isLoading, 
+      login, 
+      signup, 
+      logout,
+      updateProfile 
+    }}>
       {children}
     </AuthContext.Provider>
   );

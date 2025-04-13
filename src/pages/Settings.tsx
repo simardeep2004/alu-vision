@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   User, 
   Languages, 
@@ -22,13 +22,14 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 const Settings = () => {
-  const { user } = useAuth();
-  const [theme, setTheme] = useState('system');
-  const [name, setName] = useState(user?.name || '');
+  const { user, updateProfile } = useAuth();
+  const [name, setName] = useState(user?.full_name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [language, setLanguage] = useState('english');
+  const [theme, setTheme] = useState('system');
   const [notifications, setNotifications] = useState({
     emailAlerts: true,
     stockAlerts: true,
@@ -36,16 +37,35 @@ const Settings = () => {
     marketingEmails: false,
   });
   
-  const handleSaveProfile = () => {
-    toast.success('Profile settings saved successfully');
+  const handleSaveProfile = async () => {
+    try {
+      await updateProfile({ full_name: name });
+      toast.success('Profile settings saved successfully');
+    } catch (error) {
+      toast.error('Failed to save profile settings');
+    }
   };
   
   const handleSaveAppearance = () => {
     toast.success('Appearance settings saved successfully');
   };
   
-  const handleSaveNotifications = () => {
-    toast.success('Notification preferences saved successfully');
+  const handleSaveNotifications = async () => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: user?.id,
+          message: 'Notification settings updated',
+          read: false
+        });
+      
+      if (error) throw error;
+      
+      toast.success('Notification preferences saved successfully');
+    } catch (error) {
+      toast.error('Failed to save notification preferences');
+    }
   };
   
   return (
