@@ -60,7 +60,8 @@ import { motion } from 'framer-motion';
 import { emailQuotation } from '@/utils/emailService';
 import { downloadQuotationPdf, printQuotationPdf } from '@/utils/pdfGenerator';
 import { getCustomerByEmail, getOrCreateCustomerFromQuotation } from '@/utils/crmService';
-import { QuotationItem } from '@/types/quotation';
+import { QuotationItem, Quotation } from '@/types/quotation';
+import { supabase } from '@/integrations/supabase/client';
 
 // Types
 type ItemCategory = 'Shutter' | 'OuterFrame' | 'Glass' | 'Accessory' | 'Hardware' | 'Other';
@@ -110,17 +111,6 @@ interface OtherItem extends BaseItem {
 }
 
 type InventoryItem = ShutterItem | FrameItem | GlassItem | AccessoryItem | HardwareItem | OtherItem;
-
-type QuotationItem = {
-  id: string;
-  name: string;
-  category: string;
-  description?: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
-  discount?: number;
-};
 
 type QuotationSeries = 'standard' | 'premium' | 'luxury';
 
@@ -651,8 +641,10 @@ const QuotationBuilder = () => {
       return;
     }
     
-    const quotation = {
-      id: generateQuotationId(),
+    const quotationId = generateQuotationId();
+    
+    const quotation: Quotation = {
+      id: quotationId,
       customerName,
       customerEmail,
       customerPhone,
@@ -664,14 +656,40 @@ const QuotationBuilder = () => {
       notes
     };
     
-    await getOrCreateCustomerFromQuotation(quotation);
-    
-    if (status === 'Sent') {
-      await emailQuotation(quotation);
+    try {
+      const { data, error } = await supabase
+        .from('quotations')
+        .insert({
+          id: quotationId,
+          customer_name: customerName,
+          customer_email: customerEmail,
+          customer_phone: customerPhone,
+          customer_address: customerAddress,
+          date: new Date().toISOString(),
+          total: total,
+          status: status,
+          items: selectedItems,
+          notes: notes
+        });
+      
+      if (error) {
+        console.error('Error saving quotation to Supabase:', error);
+        toast.error('Failed to save quotation to database');
+        return;
+      }
+      
+      await getOrCreateCustomerFromQuotation(quotation);
+      
+      if (status === 'Sent') {
+        await emailQuotation(quotation);
+      }
+      
+      toast.success(`Quotation saved as ${status}`);
+      navigate('/quotations');
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Failed to save quotation');
     }
-    
-    toast.success(`Quotation saved as ${status}`);
-    navigate('/quotations');
   };
   
   const categories = Array.from(new Set(inventoryData.map(item => item.category)));

@@ -17,40 +17,41 @@ import {
   Cell,
   Legend
 } from 'recharts';
+import { supabase } from '@/integrations/supabase/client';
 
-// Mock data
+// Mock data for Delhi NCR, India
 const quotationData = [
-  { month: 'Jan', count: 12 },
-  { month: 'Feb', count: 19 },
-  { month: 'Mar', count: 15 },
-  { month: 'Apr', count: 24 },
-  { month: 'May', count: 30 },
-  { month: 'Jun', count: 22 },
+  { month: 'Jan', count: 15 },
+  { month: 'Feb', count: 22 },
+  { month: 'Mar', count: 19 },
+  { month: 'Apr', count: 28 },
+  { month: 'May', count: 35 },
+  { month: 'Jun', count: 30 },
 ];
 
 const inventoryData = [
-  { name: 'Aluminum Profiles', count: 120 },
-  { name: 'Glass Panels', count: 80 },
-  { name: 'Accessories', count: 200 },
-  { name: 'Hardware', count: 150 },
+  { name: 'Aluminum Profiles', count: 145 },
+  { name: 'Glass Panels', count: 94 },
+  { name: 'Accessories', count: 230 },
+  { name: 'Hardware', count: 178 },
 ];
 
 const productUseData = [
-  { name: 'Profile A-101', value: 35 },
-  { name: 'Profile B-202', value: 25 },
-  { name: 'Clear Glass 8mm', value: 20 },
-  { name: 'Tinted Glass 6mm', value: 15 },
-  { name: 'Other', value: 5 },
+  { name: 'Profile A-101', value: 38 },
+  { name: 'Profile B-202', value: 28 },
+  { name: 'Clear Glass 8mm', value: 18 },
+  { name: 'Tinted Glass 6mm', value: 12 },
+  { name: 'Other', value: 4 },
 ];
 
 const COLORS = ['#4682B4', '#5FB3CE', '#20B2AA', '#4CAF50', '#FFA500'];
 
 const recentActivities = [
-  { id: 1, type: 'Quotation', description: 'New quotation #1234 created', time: '2 hours ago' },
-  { id: 2, type: 'Inventory', description: 'Stock updated: Profile A-101 (+50)', time: '4 hours ago' },
-  { id: 3, type: 'System', description: 'New user Samantha Brown registered', time: '1 day ago' },
-  { id: 4, type: 'Quotation', description: 'Quotation #1233 converted to invoice', time: '1 day ago' },
-  { id: 5, type: 'Inventory', description: 'Low stock alert: Clear Glass 10mm', time: '2 days ago' },
+  { id: 1, type: 'Quotation', description: 'New quotation #1234 created for Sharma Enterprises, Delhi', time: '2 hours ago' },
+  { id: 2, type: 'Inventory', description: 'Stock updated: Profile A-101 (+50) from Rajouri Garden warehouse', time: '4 hours ago' },
+  { id: 3, type: 'System', description: 'New user Sameer Gupta registered from Gurgaon branch', time: '1 day ago' },
+  { id: 4, type: 'Quotation', description: 'Quotation #1233 converted to invoice for Luxury Apartments, Noida', time: '1 day ago' },
+  { id: 5, type: 'Inventory', description: 'Low stock alert: Clear Glass 10mm at Faridabad warehouse', time: '2 days ago' },
 ];
 
 const Dashboard = () => {
@@ -65,15 +66,36 @@ const Dashboard = () => {
   
   // Simulate loading data
   useEffect(() => {
-    // In a real app, this would be an API call
+    // In a real app, this would be an API call to Supabase
     setTimeout(() => {
       setStats({
-        totalQuotations: 122,
-        totalProducts: 550,
-        totalValue: 78500,
-        lowStockItems: 5
+        totalQuotations: 149,
+        totalProducts: 647,
+        totalValue: 9650000, // in INR
+        lowStockItems: 8
       });
     }, 1000);
+    
+    // Attempt to subscribe to real-time updates
+    const channel = supabase
+      .channel('public:quotations')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'quotations' 
+      }, (payload) => {
+        console.log('New quotation:', payload);
+        // Update stats in real-time
+        setStats(prev => ({
+          ...prev,
+          totalQuotations: prev.totalQuotations + 1
+        }));
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
   
   return (
@@ -96,7 +118,7 @@ const Dashboard = () => {
         
         <div className="stats-card">
           <h3 className="text-gray-500 text-sm font-medium mb-1">Inventory Value</h3>
-          <p className="text-3xl font-bold text-alu-primary">${stats.totalValue.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-alu-primary">₹{(stats.totalValue/100000).toFixed(2)} Lakh</p>
           <span className="text-green-500 text-xs mt-2">↑ 8% from last quarter</span>
         </div>
         
@@ -112,7 +134,7 @@ const Dashboard = () => {
         {/* Quotation Chart */}
         <Card className="glass-card p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold">Quotations Overview</h2>
+            <h2 className="text-lg font-semibold">Delhi NCR Quotations</h2>
             <div className="flex space-x-2">
               <button
                 onClick={() => setChartView('bar')}
@@ -155,7 +177,7 @@ const Dashboard = () => {
         {/* Top Products Chart */}
         <Card className="glass-card p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold">Top Products Used</h2>
+            <h2 className="text-lg font-semibold">Top Products Used in NCR</h2>
             <PieChart size={18} className="text-gray-400" />
           </div>
           
@@ -187,7 +209,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Activities */}
         <Card className="glass-card p-6 lg:col-span-2">
-          <h2 className="text-lg font-semibold mb-4">Recent Activities</h2>
+          <h2 className="text-lg font-semibold mb-4">Recent Activities in Delhi NCR</h2>
           <div className="space-y-4">
             {recentActivities.map((activity) => (
               <div 
@@ -210,7 +232,7 @@ const Dashboard = () => {
         
         {/* Inventory Status */}
         <Card className="glass-card p-6">
-          <h2 className="text-lg font-semibold mb-4">Inventory Status</h2>
+          <h2 className="text-lg font-semibold mb-4">Delhi NCR Inventory Status</h2>
           <div className="space-y-4">
             {inventoryData.map((item, index) => (
               <div key={index} className="space-y-2">

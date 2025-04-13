@@ -1,7 +1,9 @@
+import { useState } from "react";
+import { Link, NavLink } from "react-router-dom";
+import { Menu } from 'lucide-react';
 
-import { useState } from 'react';
-import { Bell, User } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ModeToggle } from "@/components/ModeToggle";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,74 +11,108 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { useAuth } from '@/hooks/useAuth';
+} from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/hooks/useAuth";
 
 const Header = () => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, logout } = useAuth();
-  
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
   return (
-    <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 flex items-center justify-between sticky top-0 z-10">
-      {/* Left section - empty or could contain logo/title */}
-      <div className="flex items-center">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 hidden md:block">
+    <header className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 py-4">
+      <div className="container flex items-center justify-between">
+        {/* Logo and Brand */}
+        <Link to="/dashboard" className="flex items-center font-bold text-xl text-alu-primary">
           TheAluVision
-        </h2>
-      </div>
-      
-      {/* Right section - User actions */}
-      <div className="flex items-center space-x-4 ml-auto">
-        {/* Notifications */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <div className="max-h-[300px] overflow-y-auto">
-              <DropdownMenuItem className="p-3">
-                <div>
-                  <p className="text-sm font-medium mb-1">Low Stock Alert</p>
-                  <p className="text-xs text-gray-500">Aluminum profile A-101 is running low</p>
-                  <p className="text-xs text-gray-400 mt-1">2 hours ago</p>
-                </div>
+        </Link>
+
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex items-center space-x-6">
+          <NavLink to="/dashboard" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "hover:text-gray-500 dark:hover:text-gray-300"}>
+            Dashboard
+          </NavLink>
+          <NavLink to="/inventory" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "hover:text-gray-500 dark:hover:text-gray-300"}>
+            Inventory
+          </NavLink>
+          <NavLink to="/quotations" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "hover:text-gray-500 dark:hover:text-gray-300"}>
+            Quotations
+          </NavLink>
+          {user?.isAdmin && (
+            <NavLink to="/admin" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "hover:text-gray-500 dark:hover:text-gray-300"}>
+              Admin
+            </NavLink>
+          )}
+          <NavLink to="/settings" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "hover:text-gray-500 dark:hover:text-gray-300"}>
+            Settings
+          </NavLink>
+        </nav>
+
+        {/* User Avatar and Dropdown */}
+        <div className="hidden md:flex items-center space-x-4">
+          <ModeToggle />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="outline-none focus:outline-none">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
+                  <AvatarFallback>CN</AvatarFallback>
+                </Avatar>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Link to="/settings" className="w-full block">
+                  Settings
+                </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem className="p-3">
-                <div>
-                  <p className="text-sm font-medium mb-1">New Quotation Created</p>
-                  <p className="text-xs text-gray-500">Quotation #1234 was created</p>
-                  <p className="text-xs text-gray-400 mt-1">Yesterday</p>
-                </div>
-              </DropdownMenuItem>
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="justify-center cursor-pointer">
-              <span className="text-sm font-medium text-center text-alu-primary">View all notifications</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        
-        {/* User menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full">
-              <User className="h-5 w-5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout}>Log out</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => logout()}>Logout</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Mobile Menu Button */}
+        <div className="md:hidden">
+          <button onClick={toggleMobileMenu} className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-400 focus:outline-none">
+            <Menu className="h-6 w-6" />
+          </button>
+        </div>
       </div>
+
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden">
+          <nav className="flex flex-col items-center mt-4 space-y-3">
+            <NavLink to="/dashboard" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "hover:text-gray-500 dark:hover:text-gray-300"}>
+              Dashboard
+            </NavLink>
+            <NavLink to="/inventory" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "hover:text-gray-500 dark:hover:text-gray-300"}>
+              Inventory
+            </NavLink>
+            <NavLink to="/quotations" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "hover:text-gray-500 dark:hover:text-gray-300"}>
+              Quotations
+            </NavLink>
+            {user?.isAdmin && (
+              <NavLink to="/admin" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "hover:text-gray-500 dark:hover:text-gray-300"}>
+                Admin
+              </NavLink>
+            )}
+            <NavLink to="/settings" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "hover:text-gray-500 dark:hover:text-gray-300"}>
+              Settings
+            </NavLink>
+            <ModeToggle />
+            <button onClick={() => logout()} className="hover:text-gray-500 dark:hover:text-gray-300">
+              Logout
+            </button>
+          </nav>
+        </div>
+      )}
     </header>
   );
 };

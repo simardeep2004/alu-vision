@@ -97,11 +97,6 @@ const Login = () => {
                   Sign up
                 </Link>
               </div>
-              <div className="text-xs text-gray-500 text-center">
-                <p>Demo accounts:</p>
-                <p>Admin: admin@aluvision.com / admin123</p>
-                <p>User: user@aluvision.com / user123</p>
-              </div>
             </CardFooter>
           </form>
         </Card>
