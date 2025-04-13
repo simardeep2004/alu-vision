@@ -3,6 +3,7 @@ import {
   BrowserRouter as Router,
   Route,
   Routes,
+  Navigate
 } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -28,22 +29,64 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route element={
-            <ProtectedRoute>
-              <MainLayout />
-            </ProtectedRoute>
-          }>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/inventory" element={<Inventory />} />
-            <Route path="/quotations" element={<Quotations />} />
-            <Route path="/quotation-builder" element={<QuotationBuilder />} />
-            <Route path="/crm" element={<CRM />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/customers" element={<Customers />} />
-          </Route>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <MainLayout>
+                <Dashboard />
+              </MainLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/inventory" element={
+            <ProtectedRoute>
+              <MainLayout>
+                <Inventory />
+              </MainLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/quotations" element={
+            <ProtectedRoute>
+              <MainLayout>
+                <Quotations />
+              </MainLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/quotation-builder" element={
+            <ProtectedRoute>
+              <MainLayout>
+                <QuotationBuilder />
+              </MainLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/crm" element={
+            <ProtectedRoute>
+              <MainLayout>
+                <CRM />
+              </MainLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/admin" element={
+            <ProtectedRoute requireAdmin={true}>
+              <MainLayout>
+                <Admin />
+              </MainLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <MainLayout>
+                <Settings />
+              </MainLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/customers" element={
+            <ProtectedRoute>
+              <MainLayout>
+                <Customers />
+              </MainLayout>
+            </ProtectedRoute>
+          } />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AuthProvider>

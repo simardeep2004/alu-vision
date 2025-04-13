@@ -1,1584 +1,440 @@
-import { useState, useEffect } from 'react';
+
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Plus, 
-  Trash2, 
-  Save, 
-  ArrowLeft, 
-  Mail, 
-  Download,
-  Printer,
-  Percent,
-  Calculator,
-  Info,
-  Ruler,
-  Search,
-  X,
-  User,
-  Phone
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
-import { emailQuotation } from '@/utils/emailService';
-import { downloadQuotationPdf, printQuotationPdf } from '@/utils/pdfGenerator';
-import { getCustomerByEmail, getOrCreateCustomerFromQuotation } from '@/utils/crmService';
-import { QuotationItem, Quotation } from '@/types/quotation';
+import { v4 as uuidv4 } from 'uuid';
+import { PlusCircle, Save, Trash2, Send } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Quotation, QuotationItem, QuotationStatus } from '@/types/quotation';
 import { supabase } from '@/integrations/supabase/client';
-
-// Types
-type ItemCategory = 'Shutter' | 'OuterFrame' | 'Glass' | 'Accessory' | 'Hardware' | 'Other';
-
-interface BaseItem {
-  id: string;
-  name: string;
-  category: string;
-  description?: string;
-  price: number;
-}
-
-interface ShutterItem extends BaseItem {
-  category: 'Shutter';
-  material: string;
-  thickness: number;
-  color: string;
-}
-
-interface FrameItem extends BaseItem {
-  category: 'OuterFrame';
-  style: string;
-  material: string;
-  color: string;
-}
-
-interface GlassItem extends BaseItem {
-  category: 'Glass';
-  type: string;
-  thickness: number;
-  treatment?: string;
-}
-
-interface AccessoryItem extends BaseItem {
-  category: 'Accessory';
-  type: string;
-}
-
-interface HardwareItem extends BaseItem {
-  category: 'Hardware';
-  type: string;
-}
-
-interface OtherItem extends BaseItem {
-  category: 'Other';
-  type: string;
-}
-
-type InventoryItem = ShutterItem | FrameItem | GlassItem | AccessoryItem | HardwareItem | OtherItem;
-
-type QuotationSeries = 'standard' | 'premium' | 'luxury';
-
-// Mock inventory data
-const inventoryData: InventoryItem[] = [
-  {
-    id: '001',
-    name: 'Aluminum Casement Shutter',
-    category: 'Shutter',
-    material: 'Aluminum',
-    thickness: 1.2,
-    color: 'White',
-    description: 'Standard casement window shutter',
-    price: 1800.00,
-  },
-  {
-    id: '002',
-    name: 'Premium Sliding Shutter',
-    category: 'Shutter',
-    material: 'Aluminum',
-    thickness: 1.4,
-    color: 'Silver',
-    description: 'Premium sliding window shutter',
-    price: 2400.00,
-  },
-  {
-    id: '003',
-    name: 'Standard Outer Frame',
-    category: 'OuterFrame',
-    style: 'Simple',
-    material: 'Aluminum',
-    color: 'White',
-    description: 'Standard window outer frame',
-    price: 1200.00,
-  },
-  {
-    id: '004',
-    name: 'Deluxe Outer Frame',
-    category: 'OuterFrame',
-    style: 'Decorative',
-    material: 'Aluminum',
-    color: 'Brown',
-    description: 'Decorative window outer frame',
-    price: 1800.00,
-  },
-  {
-    id: '005',
-    name: 'Clear Glass 5mm',
-    category: 'Glass',
-    type: 'Clear',
-    thickness: 5,
-    description: 'Standard clear glass',
-    price: 550.00,
-  },
-  {
-    id: '006',
-    name: 'Clear Glass 6mm',
-    category: 'Glass',
-    type: 'Clear',
-    thickness: 6,
-    description: 'Thicker clear glass',
-    price: 650.00,
-  },
-  {
-    id: '007',
-    name: 'Tinted Glass 5mm',
-    category: 'Glass',
-    type: 'Tinted',
-    thickness: 5,
-    description: 'Standard tinted glass',
-    price: 750.00,
-  },
-  {
-    id: '008',
-    name: 'Tinted Glass 6mm',
-    category: 'Glass',
-    type: 'Tinted',
-    thickness: 6,
-    description: 'Thicker tinted glass',
-    price: 850.00,
-  },
-  {
-    id: '009',
-    name: 'Frosted Glass 5mm',
-    category: 'Glass',
-    type: 'Frosted',
-    thickness: 5,
-    description: 'Privacy frosted glass',
-    price: 850.00,
-  },
-  {
-    id: '010',
-    name: 'Frosted Glass 6mm',
-    category: 'Glass',
-    type: 'Frosted',
-    thickness: 6,
-    description: 'Thicker privacy frosted glass',
-    price: 950.00,
-  },
-  {
-    id: '011',
-    name: 'Basic Handle',
-    category: 'Accessory',
-    type: 'Handle',
-    description: 'Standard window handle',
-    price: 250.00,
-  },
-  {
-    id: '012',
-    name: 'Deluxe Handle',
-    category: 'Accessory',
-    type: 'Handle',
-    description: 'Premium finish window handle',
-    price: 450.00,
-  },
-  {
-    id: '013',
-    name: 'Standard Lock',
-    category: 'Accessory',
-    type: 'Lock',
-    description: 'Basic window lock mechanism',
-    price: 350.00,
-  },
-  {
-    id: '014',
-    name: 'Security Lock',
-    category: 'Accessory',
-    type: 'Lock',
-    description: 'Enhanced security window lock',
-    price: 650.00,
-  },
-  {
-    id: '015',
-    name: 'Standard Hinges (Pair)',
-    category: 'Hardware',
-    type: 'Hinge',
-    description: 'Standard window hinges',
-    price: 300.00,
-  },
-  {
-    id: '016',
-    name: 'Heavy Duty Hinges (Pair)',
-    category: 'Hardware',
-    type: 'Hinge',
-    description: 'Reinforced window hinges',
-    price: 500.00,
-  },
-  {
-    id: '017',
-    name: 'Sliding Mechanism',
-    category: 'Hardware',
-    type: 'Slider',
-    description: 'Smooth sliding window mechanism',
-    price: 800.00,
-  },
-  {
-    id: '018',
-    name: 'Weather Strip',
-    category: 'Accessory',
-    type: 'Sealant',
-    description: 'Weather-proof sealing strip',
-    price: 200.00,
-  },
-  {
-    id: '019',
-    name: 'Standard Installation',
-    category: 'Other',
-    type: 'Service',
-    description: 'Basic installation service',
-    price: 1500.00,
-  },
-  {
-    id: '020',
-    name: 'Premium Installation',
-    category: 'Other',
-    type: 'Service',
-    description: 'Comprehensive installation with warranty',
-    price: 2500.00,
-  },
-];
+import { useAuth } from '@/hooks/useAuth';
 
 const QuotationBuilder = () => {
   const navigate = useNavigate();
-  const [customerName, setCustomerName] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerAddress, setCustomerAddress] = useState('');
-  const [notes, setNotes] = useState('');
-  const [selectedItems, setSelectedItems] = useState<QuotationItem[]>([]);
-  const [showAddItemDialog, setShowAddItemDialog] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filteredItems, setFilteredItems] = useState<InventoryItem[]>(inventoryData);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedItemId, setSelectedItemId] = useState<string>('');
-  const [quantity, setQuantity] = useState<number>(1);
-  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
-  const [selectedSeries, setSelectedSeries] = useState<QuotationSeries>('standard');
-  const [wastagePercent, setWastagePercent] = useState<number>(5);
-  const [taxPercent, setTaxPercent] = useState<number>(18); // GST
-  const [discountPercent, setDiscountPercent] = useState<number>(0);
+  const { user } = useAuth();
   
-  const [itemWidth, setItemWidth] = useState<number>(0);
-  const [itemHeight, setItemHeight] = useState<number>(0);
-  const [itemArea, setItemArea] = useState<number>(0);
+  const [quotation, setQuotation] = useState<Omit<Quotation, 'id'>>({
+    customerName: '',
+    customerEmail: '',
+    customerPhone: '',
+    customerAddress: '',
+    date: new Date().toISOString().split('T')[0],
+    total: 0,
+    status: 'Draft',
+    items: [],
+    notes: ''
+  });
   
-  const areaBasedRates = {
-    'Shutter': { standard: 21, premium: 24, luxury: 30 },
-    'OuterFrame': { standard: 18, premium: 22, luxury: 28 },
-    'Glass': { standard: 15, premium: 20, luxury: 25 }
-  };
+  const [currentItem, setCurrentItem] = useState<Omit<QuotationItem, 'id' | 'totalPrice'>>({
+    name: '',
+    category: '',
+    quantity: 1,
+    unit: 'pcs',
+    unitPrice: 0,
+    description: ''
+  });
   
-  useEffect(() => {
-    if (itemWidth > 0 && itemHeight > 0) {
-      const area = itemWidth * itemHeight;
-      setItemArea(area);
-    } else {
-      setItemArea(0);
-    }
-  }, [itemWidth, itemHeight]);
+  const [isSaving, setIsSaving] = useState(false);
   
-  const seriesMultipliers = {
-    'standard': 1.0,
-    'premium': 1.2,
-    'luxury': 1.5
-  };
-  
-  const categoryMultipliers = {
-    'Shutter': 1.0,
-    'OuterFrame': 1.0,
-    'Glass': 1.0,
-    'Accessory': 1.0,
-    'Hardware': 1.0,
-    'Other': 1.0
-  };
-  
-  const subtotal = selectedItems.reduce((sum, item) => sum + item.totalPrice, 0);
-  const wastageAmount = (subtotal * (wastagePercent / 100));
-  const discountAmount = ((subtotal + wastageAmount) * (discountPercent / 100));
-  const taxableAmount = subtotal + wastageAmount - discountAmount;
-  const taxAmount = taxableAmount * (taxPercent / 100);
-  const total = taxableAmount + taxAmount;
-  
-  const getSeriesMultiplier = () => {
-    return seriesMultipliers[selectedSeries];
-  };
-  
-  const calculateAreaBasedPrice = (category: ItemCategory, area: number): number => {
-    if (!area || area <= 0) return 0;
-    
-    const baseRatePerThousandSqMm = areaBasedRates[category as keyof typeof areaBasedRates]?.[selectedSeries] || 0;
-    return (area / 1000) * baseRatePerThousandSqMm;
-  };
-  
-  const calculateAdjustedPrice = (item: InventoryItem, width?: number, height?: number): number => {
-    if ((item.category === 'Shutter' || item.category === 'OuterFrame' || item.category === 'Glass') 
-        && width && height && width > 0 && height > 0) {
-      const area = width * height;
-      return calculateAreaBasedPrice(item.category as ItemCategory, area);
+  const addItem = () => {
+    if (!currentItem.name || !currentItem.category) {
+      toast.error('Please provide item name and category');
+      return;
     }
     
-    const seriesMultiplier = getSeriesMultiplier();
-    const categoryMultiplier = categoryMultipliers[item.category as keyof typeof categoryMultipliers];
-    return item.price * seriesMultiplier * categoryMultiplier;
-  };
-  
-  const getPerUnitPrice = (category: string): number => {
-    if (category === 'Shutter' || category === 'OuterFrame' || category === 'Glass') {
-      return areaBasedRates[category as keyof typeof areaBasedRates]?.[selectedSeries] || 0;
-    }
-    return 0;
-  };
-  
-  useEffect(() => {
-    const filtered = inventoryData.filter(item => {
-      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                             item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                             item.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const totalPrice = currentItem.quantity * currentItem.unitPrice;
+    
+    const newItem: QuotationItem = {
+      id: uuidv4(),
+      ...currentItem,
+      totalPrice
+    };
+    
+    setQuotation(prev => {
+      const newItems = [...prev.items, newItem];
+      const newTotal = newItems.reduce((sum, item) => sum + item.totalPrice, 0);
       
-      const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
-      
-      return matchesSearch && matchesCategory;
+      return {
+        ...prev,
+        items: newItems,
+        total: newTotal
+      };
     });
     
-    setFilteredItems(filtered);
-  }, [searchQuery, selectedCategory]);
-  
-  useEffect(() => {
-    if (selectedItemId) {
-      const item = inventoryData.find(item => item.id === selectedItemId);
-      if (item) {
-        setItemWidth(0);
-        setItemHeight(0);
-        setItemArea(0);
-      }
-    }
-  }, [selectedItemId]);
-  
-  const handleCustomerEmailChange = (email: string) => {
-    setCustomerEmail(email);
-    
-    const customer = getCustomerByEmail(email);
-    if (customer) {
-      setCustomerName(customer.name);
-      setCustomerPhone(customer.phone || '');
-      setCustomerAddress(customer.address || '');
-      toast.info(`Customer information loaded for ${customer.name}`);
-    }
-  };
-  
-  const handleAddItem = () => {
-    if (!selectedItemId || quantity <= 0) return;
-    
-    const item = inventoryData.find(item => item.id === selectedItemId);
-    if (!item) return;
-    
-    if (item.category === 'Shutter' || item.category === 'OuterFrame' || item.category === 'Glass') {
-      if (itemWidth <= 0 || itemHeight <= 0) {
-        toast.error(`Please specify dimensions for ${item.category}`);
-        return;
-      }
-    }
-    
-    let adjustedPrice = 0;
-    let perUnitPrice = 0;
-    
-    if (item.category === 'Shutter' || item.category === 'OuterFrame' || item.category === 'Glass') {
-      perUnitPrice = getPerUnitPrice(item.category);
-      adjustedPrice = calculateAreaBasedPrice(item.category as ItemCategory, itemArea);
-    } else {
-      adjustedPrice = calculateAdjustedPrice(item);
-    }
-    
-    const existingItemIndex = selectedItems.findIndex(i => {
-      if (item.category === 'Shutter' || item.category === 'OuterFrame' || item.category === 'Glass') {
-        return i.id === item.id && i.width === itemWidth && i.height === itemHeight;
-      }
-      return i.id === item.id;
+    // Reset current item
+    setCurrentItem({
+      name: '',
+      category: '',
+      quantity: 1,
+      unit: 'pcs',
+      unitPrice: 0,
+      description: ''
     });
-    
-    if (existingItemIndex >= 0) {
-      const updatedItems = [...selectedItems];
-      const existingItem = updatedItems[existingItemIndex];
-      const newQuantity = existingItem.quantity + quantity;
-      
-      updatedItems[existingItemIndex] = {
-        ...existingItem,
-        quantity: newQuantity,
-        totalPrice: newQuantity * existingItem.unitPrice,
-      };
-      
-      setSelectedItems(updatedItems);
-    } else {
-      const newItem: QuotationItem = {
-        id: item.id,
-        name: item.name,
-        category: item.category,
-        quantity,
-        unit: item.category === 'Shutter' || item.category === 'OuterFrame' || item.category === 'Glass' ? 'set' : 'pcs',
-        unitPrice: adjustedPrice,
-        totalPrice: quantity * adjustedPrice,
-      };
-      
-      if (item.category === 'Shutter' || item.category === 'OuterFrame' || item.category === 'Glass') {
-        newItem.width = itemWidth;
-        newItem.height = itemHeight;
-        newItem.area = itemArea;
-        newItem.perUnitPrice = perUnitPrice;
-      }
-      
-      setSelectedItems([...selectedItems, newItem]);
-    }
-    
-    setSelectedItemId('');
-    setQuantity(1);
-    setItemWidth(0);
-    setItemHeight(0);
-    setItemArea(0);
-    setShowAddItemDialog(false);
     
     toast.success('Item added to quotation');
   };
   
-  const handleRemoveItem = (id: string, width?: number, height?: number) => {
-    if (width && height) {
-      setSelectedItems(selectedItems.filter(item => 
-        !(item.id === id && item.width === width && item.height === height)
-      ));
-    } else {
-      setSelectedItems(selectedItems.filter(item => item.id !== id));
-    }
+  const removeItem = (id: string) => {
+    setQuotation(prev => {
+      const newItems = prev.items.filter(item => item.id !== id);
+      const newTotal = newItems.reduce((sum, item) => sum + item.totalPrice, 0);
+      
+      return {
+        ...prev,
+        items: newItems,
+        total: newTotal
+      };
+    });
+    
     toast.success('Item removed from quotation');
   };
   
-  const handleUpdateQuantity = (id: string, newQuantity: number, width?: number, height?: number) => {
-    if (newQuantity <= 0) return;
-    
-    const updatedItems = selectedItems.map(item => {
-      if (width && height) {
-        if (item.id === id && item.width === width && item.height === height) {
-          return {
-            ...item,
-            quantity: newQuantity,
-            totalPrice: newQuantity * item.unitPrice,
-          };
-        }
-      } else if (item.id === id) {
-        return {
-          ...item,
-          quantity: newQuantity,
-          totalPrice: newQuantity * item.unitPrice,
-        };
-      }
-      return item;
-    });
-    
-    setSelectedItems(updatedItems);
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setQuotation(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
   
-  const handleChangeSeries = (newSeries: QuotationSeries) => {
-    setSelectedSeries(newSeries);
-    
-    const updatedItems = selectedItems.map(item => {
-      if (item.width && item.height && item.area && 
-         (item.category === 'Shutter' || item.category === 'OuterFrame' || item.category === 'Glass')) {
-        const perUnitPrice = areaBasedRates[item.category as keyof typeof areaBasedRates]?.[newSeries] || 0;
-        const newUnitPrice = (item.area / 1000) * perUnitPrice;
-        
-        return {
-          ...item,
-          unitPrice: newUnitPrice,
-          totalPrice: item.quantity * newUnitPrice,
-          perUnitPrice: perUnitPrice,
-        };
-      } else {
-        const inventoryItem = inventoryData.find(invItem => invItem.id === item.id);
-        if (inventoryItem) {
-          const seriesMultiplier = seriesMultipliers[newSeries];
-          const categoryMultiplier = categoryMultipliers[item.category as keyof typeof categoryMultipliers];
-          const newUnitPrice = inventoryItem.price * seriesMultiplier * categoryMultiplier;
-          
-          return {
-            ...item,
-            unitPrice: newUnitPrice,
-            totalPrice: item.quantity * newUnitPrice,
-          };
-        }
-      }
-      return item;
-    });
-    
-    setSelectedItems(updatedItems);
-    toast.success(`Changed to ${newSeries.charAt(0).toUpperCase() + newSeries.slice(1)} series pricing`);
+  const handleItemChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setCurrentItem(prev => ({
+      ...prev,
+      [name]: name === 'quantity' || name === 'unitPrice' ? parseFloat(value) || 0 : value
+    }));
   };
   
-  const generateQuotationId = (): string => {
-    return `Q${Math.floor(1000 + Math.random() * 9000)}`;
+  const handleSelectChange = (value: string, field: string) => {
+    if (field === 'status') {
+      setQuotation(prev => ({
+        ...prev,
+        status: value as QuotationStatus
+      }));
+    } else if (field === 'unit' || field === 'category') {
+      setCurrentItem(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    }
   };
   
-  const handleDownloadPdf = () => {
-    const quotation = {
-      id: generateQuotationId(),
-      customerName,
-      customerEmail,
-      customerPhone,
-      customerAddress,
-      date: new Date().toISOString().split('T')[0],
-      total,
-      status: 'Draft' as const,
-      items: selectedItems,
-      notes
-    };
-    
-    downloadQuotationPdf(quotation);
-  };
-  
-  const handlePrintPdf = () => {
-    const quotation = {
-      id: generateQuotationId(),
-      customerName,
-      customerEmail,
-      customerPhone,
-      customerAddress,
-      date: new Date().toISOString().split('T')[0],
-      total,
-      status: 'Draft' as const,
-      items: selectedItems,
-      notes
-    };
-    
-    printQuotationPdf(quotation);
-  };
-  
-  const handleEmailQuotation = async () => {
-    const quotation = {
-      id: generateQuotationId(),
-      customerName,
-      customerEmail,
-      customerPhone,
-      customerAddress,
-      date: new Date().toISOString().split('T')[0],
-      total,
-      status: 'Sent' as const,
-      items: selectedItems,
-      notes
-    };
-    
-    await getOrCreateCustomerFromQuotation(quotation);
-    
-    await emailQuotation(quotation);
-    
-    setIsSaveDialogOpen(false);
-    navigate('/quotations');
-  };
-  
-  const handleSaveQuotation = async (status: 'Draft' | 'Sent') => {
-    if (!customerName) {
-      toast.error('Please enter a customer name');
+  const saveQuotation = async (status: QuotationStatus = 'Draft') => {
+    if (!quotation.customerName || !quotation.customerEmail) {
+      toast.error('Customer name and email are required');
       return;
     }
     
-    if (!customerEmail) {
-      toast.error('Please enter a customer email');
+    if (quotation.items.length === 0) {
+      toast.error('Add at least one item to the quotation');
       return;
     }
     
-    if (selectedItems.length === 0) {
-      toast.error('Please add at least one item to the quotation');
-      return;
-    }
-    
-    const quotationId = generateQuotationId();
-    
-    const quotation: Quotation = {
-      id: quotationId,
-      customerName,
-      customerEmail,
-      customerPhone,
-      customerAddress,
-      date: new Date().toISOString().split('T')[0],
-      total,
-      status,
-      items: selectedItems,
-      notes
-    };
+    setIsSaving(true);
     
     try {
-      const { data, error } = await supabase
+      const newQuotation: Quotation = {
+        id: uuidv4(),
+        ...quotation,
+        status
+      };
+      
+      // Save to Supabase
+      const { error } = await supabase
         .from('quotations')
         .insert({
-          id: quotationId,
-          customer_name: customerName,
-          customer_email: customerEmail,
-          customer_phone: customerPhone,
-          customer_address: customerAddress,
-          date: new Date().toISOString(),
-          total: total,
-          status: status,
-          items: selectedItems,
-          notes: notes
+          id: newQuotation.id,
+          customer_name: newQuotation.customerName,
+          customer_email: newQuotation.customerEmail,
+          customer_phone: newQuotation.customerPhone,
+          customer_address: newQuotation.customerAddress,
+          date: newQuotation.date,
+          total: newQuotation.total,
+          status: newQuotation.status,
+          items: newQuotation.items,
+          notes: newQuotation.notes
         });
       
-      if (error) {
-        console.error('Error saving quotation to Supabase:', error);
-        toast.error('Failed to save quotation to database');
-        return;
-      }
+      if (error) throw error;
       
-      await getOrCreateCustomerFromQuotation(quotation);
-      
-      if (status === 'Sent') {
-        await emailQuotation(quotation);
-      }
-      
-      toast.success(`Quotation saved as ${status}`);
+      toast.success(`Quotation ${status === 'Sent' ? 'sent' : 'saved'} successfully`);
       navigate('/quotations');
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error saving quotation:', error);
       toast.error('Failed to save quotation');
+    } finally {
+      setIsSaving(false);
     }
-  };
-  
-  const categories = Array.from(new Set(inventoryData.map(item => item.category)));
-  
-  const selectedItemNeedsDimensions = () => {
-    if (!selectedItemId) return false;
-    
-    const item = inventoryData.find(item => item.id === selectedItemId);
-    return item?.category === 'Shutter' || item?.category === 'OuterFrame' || item?.category === 'Glass';
-  };
-  
-  const ItemSelectionModal = ({ isOpen, onClose, onSelect }) => {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [selectedItem, setSelectedItem] = useState(null);
-    const [quantity, setQuantity] = useState(1);
-    
-    const products = [
-      { id: 'P001', name: 'Aluminum Profile A-101', category: 'Profiles', price: 450, unit: 'meter' },
-      { id: 'P002', name: 'Aluminum Profile B-202', category: 'Profiles', price: 520, unit: 'meter' },
-      { id: 'P003', name: 'Glass Panel Clear 8mm', category: 'Glass', price: 1200, unit: 'sqm' },
-      { id: 'P004', name: 'Glass Panel Tinted 6mm', category: 'Glass', price: 1500, unit: 'sqm' },
-      { id: 'P005', name: 'Handle Type A', category: 'Hardware', price: 250, unit: 'piece' },
-      { id: 'P006', name: 'Lock Mechanism Standard', category: 'Hardware', price: 350, unit: 'piece' },
-      { id: 'P007', name: 'Weather Strip Type B', category: 'Accessories', price: 120, unit: 'meter' },
-      { id: 'P008', name: 'Silicon Sealant White', category: 'Accessories', price: 180, unit: 'tube' },
-    ];
-    
-    const filteredProducts = products.filter(product => 
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    
-    const handleSelect = (product) => {
-      setSelectedItem(product);
-    };
-    
-    const handleAddItem = () => {
-      if (selectedItem) {
-        onSelect({
-          ...selectedItem,
-          quantity: quantity,
-          total: selectedItem.price * quantity
-        });
-        setSelectedItem(null);
-        setQuantity(1);
-        onClose();
-      }
-    };
-    
-    const handleQuantityChange = (e) => {
-      const value = parseInt(e.target.value);
-      if (!isNaN(value) && value > 0) {
-        setQuantity(value);
-      }
-    };
-    
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Select Product</DialogTitle>
-            <DialogDescription>
-              Search and select a product to add to your quotation.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="mb-4">
-            <Input
-              placeholder="Search products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="mb-4"
-            />
-            
-            <div className="max-h-[300px] overflow-y-auto border rounded-md">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
-                  <tr>
-                    <th className="px-4 py-2 text-left">Product</th>
-                    <th className="px-4 py-2 text-left">Category</th>
-                    <th className="px-4 py-2 text-right">Price (₹)</th>
-                    <th className="px-4 py-2 text-center">Unit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredProducts.map((product) => (
-                    <tr 
-                      key={product.id} 
-                      className={`border-t hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${
-                        selectedItem?.id === product.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                      }`}
-                      onClick={() => handleSelect(product)}
-                    >
-                      <td className="px-4 py-2">{product.name}</td>
-                      <td className="px-4 py-2">{product.category}</td>
-                      <td className="px-4 py-2 text-right">{product.price.toLocaleString('en-IN')}</td>
-                      <td className="px-4 py-2 text-center">{product.unit}</td>
-                    </tr>
-                  ))}
-                  {filteredProducts.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
-                        No products found. Try a different search term.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          
-          {selectedItem && (
-            <div className="flex items-center justify-between border-t pt-4">
-              <div>
-                <p className="font-medium">{selectedItem.name}</p>
-                <p className="text-sm text-gray-500">₹{selectedItem.price.toLocaleString('en-IN')} per {selectedItem.unit}</p>
-              </div>
-              
-              <div className="flex items-center gap-4">
-                <div className="flex items-center">
-                  <label htmlFor="quantity" className="mr-2 text-sm font-medium">
-                    Quantity:
-                  </label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    min="1"
-                    value={quantity}
-                    onChange={handleQuantityChange}
-                    className="w-20"
-                  />
-                </div>
-                
-                <Button onClick={handleAddItem} className="ml-auto">
-                  Add
-                </Button>
-              </div>
-            </div>
-          )}
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={onClose}>Cancel</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
   };
   
   return (
-    <div className="page-container">
-      <div className="flex items-center mb-6">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate('/quotations')}
-          className="mr-2"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <h1 className="text-2xl font-bold">Create New Quotation</h1>
-      </div>
+    <div className="container max-w-7xl mx-auto py-6">
+      <h1 className="text-2xl font-bold mb-6">Create New Quotation</h1>
       
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-4 space-y-6">
-          <Card className="glass-card shadow-md hover:shadow-lg transition-shadow duration-300">
-            <CardContent className="p-6">
-              <h2 className="text-lg font-semibold mb-4 flex items-center">
-                <span className="w-8 h-8 rounded-full bg-alu-primary text-white inline-flex items-center justify-center mr-2">1</span>
-                Customer Information
-              </h2>
-              
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="customer-name">Customer Name *</Label>
-                  <Input
-                    id="customer-name"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="Enter customer name"
-                    className="focus:border-alu-primary"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="customer-email">Customer Email *</Label>
-                  <Input
-                    id="customer-email"
-                    type="email"
-                    value={customerEmail}
-                    onChange={(e) => handleCustomerEmailChange(e.target.value)}
-                    placeholder="customer@example.com"
-                    className="focus:border-alu-primary"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="customer-phone">Phone Number</Label>
-                  <Input
-                    id="customer-phone"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    placeholder="Enter phone number"
-                    className="focus:border-alu-primary"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="customer-address">Address</Label>
-                  <Textarea
-                    id="customer-address"
-                    value={customerAddress}
-                    onChange={(e) => setCustomerAddress(e.target.value)}
-                    placeholder="Enter customer address"
-                    className="min-h-[80px] focus:border-alu-primary"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Customer Information */}
+        <Card className="p-6 lg:col-span-1">
+          <h2 className="text-lg font-semibold mb-4">Customer Information</h2>
           
-          <Card className="glass-card shadow-md hover:shadow-lg transition-shadow duration-300">
-            <CardContent className="p-6">
-              <h2 className="text-lg font-semibold mb-4 flex items-center">
-                <span className="w-8 h-8 rounded-full bg-alu-primary text-white inline-flex items-center justify-center mr-2">2</span>
-                Series & Pricing
-              </h2>
-              
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="series">Series Selection</Label>
-                  <Tabs 
-                    defaultValue={selectedSeries} 
-                    className="w-full"
-                    onValueChange={(value) => handleChangeSeries(value as QuotationSeries)}
-                  >
-                    <TabsList className="grid grid-cols-3 mb-2">
-                      <TabsTrigger value="standard">Standard</TabsTrigger>
-                      <TabsTrigger value="premium">Premium</TabsTrigger>
-                      <TabsTrigger value="luxury">Luxury</TabsTrigger>
-                    </TabsList>
-                    
-                    <div className="text-sm text-gray-500 mt-2">
-                      {selectedSeries === 'standard' && (
-                        <p>Basic features with standard materials and finishes.</p>
-                      )}
-                      {selectedSeries === 'premium' && (
-                        <p>Enhanced quality with better materials and finishes.</p>
-                      )}
-                      {selectedSeries === 'luxury' && (
-                        <p>High-end products with premium materials and finishes.</p>
-                      )}
-                    </div>
-                  </Tabs>
-                </div>
-                
-                <Separator />
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <Label htmlFor="wastage" className="flex items-center gap-1">
-                      Wastage Percentage
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <Info size={14} className="text-gray-400" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="max-w-xs">Estimated material wastage during manufacturing and installation</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </Label>
-                    <div className="flex items-center">
-                      <Input
-                        id="wastage"
-                        type="number"
-                        value={wastagePercent}
-                        onChange={(e) => setWastagePercent(Number(e.target.value))}
-                        min={0}
-                        max={20}
-                        className="w-20 text-right"
-                      />
-                      <span className="ml-2">%</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <Label htmlFor="discount" className="flex items-center gap-1">
-                      Discount
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <Info size={14} className="text-gray-400" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="max-w-xs">Discount percentage applied to the subtotal</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </Label>
-                    <div className="flex items-center">
-                      <Input
-                        id="discount"
-                        type="number"
-                        value={discountPercent}
-                        onChange={(e) => setDiscountPercent(Number(e.target.value))}
-                        min={0}
-                        max={50}
-                        className="w-20 text-right"
-                      />
-                      <span className="ml-2">%</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <Label htmlFor="tax" className="flex items-center gap-1">
-                      Tax (GST)
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <Info size={14} className="text-gray-400" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="max-w-xs">Tax percentage applied to the total after wastage and discount</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </Label>
-                    <div className="flex items-center">
-                      <Input
-                        id="tax"
-                        type="number"
-                        value={taxPercent}
-                        onChange={(e) => setTaxPercent(Number(e.target.value))}
-                        min={0}
-                        max={28}
-                        className="w-20 text-right"
-                      />
-                      <span className="ml-2">%</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="customerName">Name</Label>
+              <Input 
+                id="customerName" 
+                name="customerName" 
+                value={quotation.customerName} 
+                onChange={handleInputChange} 
+                placeholder="Customer name"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="customerEmail">Email</Label>
+              <Input 
+                id="customerEmail" 
+                name="customerEmail" 
+                type="email" 
+                value={quotation.customerEmail} 
+                onChange={handleInputChange} 
+                placeholder="customer@example.com"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="customerPhone">Phone</Label>
+              <Input 
+                id="customerPhone" 
+                name="customerPhone" 
+                value={quotation.customerPhone || ''} 
+                onChange={handleInputChange} 
+                placeholder="Phone number"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="customerAddress">Address</Label>
+              <Textarea 
+                id="customerAddress" 
+                name="customerAddress" 
+                value={quotation.customerAddress || ''} 
+                onChange={handleInputChange} 
+                placeholder="Customer address"
+                className="min-h-[100px]"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="date">Date</Label>
+              <Input 
+                id="date" 
+                name="date" 
+                type="date" 
+                value={quotation.date} 
+                onChange={handleInputChange}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea 
+                id="notes" 
+                name="notes" 
+                value={quotation.notes || ''} 
+                onChange={handleInputChange} 
+                placeholder="Additional notes"
+                className="min-h-[100px]"
+              />
+            </div>
+          </div>
+        </Card>
+        
+        {/* Quotation Items */}
+        <Card className="p-6 lg:col-span-2">
+          <h2 className="text-lg font-semibold mb-4">Quotation Items</h2>
           
-          <Card className="glass-card shadow-md hover:shadow-lg transition-shadow duration-300">
-            <CardContent className="p-6">
-              <h2 className="text-lg font-semibold mb-4 flex items-center">
-                <span className="w-8 h-8 rounded-full bg-alu-primary text-white inline-flex items-center justify-center mr-2">3</span>
-                Additional Notes
-              </h2>
-              
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add any additional notes or specifications"
-                  className="min-h-[120px] focus:border-alu-primary"
+          {/* Add new item form */}
+          <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md mb-6">
+            <h3 className="text-md font-medium mb-3">Add New Item</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <Label htmlFor="name">Item Name</Label>
+                <Input 
+                  id="name" 
+                  name="name" 
+                  value={currentItem.name} 
+                  onChange={handleItemChange} 
+                  placeholder="Product name"
                 />
               </div>
-            </CardContent>
-          </Card>
-        </div>
-        
-        <div className="lg:col-span-8 space-y-6">
-          <Card className="glass-card shadow-md hover:shadow-lg transition-shadow duration-300">
-            <CardContent className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold flex items-center">
-                  <span className="w-8 h-8 rounded-full bg-alu-primary text-white inline-flex items-center justify-center mr-2">4</span>
-                  Quotation Items
-                </h2>
-                <Dialog open={showAddItemDialog} onOpenChange={setShowAddItemDialog}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-alu-primary hover:bg-alu-primary/90">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Item
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-4xl">
-                    <DialogHeader>
-                      <DialogTitle>Add Item to Quotation</DialogTitle>
-                      <DialogDescription>
-                        Search and select items from the inventory
-                      </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                          <Input
-                            placeholder="Search items..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10"
-                          />
-                          {searchQuery && (
-                            <button
-                              onClick={() => setSearchQuery('')}
-                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                            >
-                              <X size={16} />
-                            </button>
-                          )}
-                        </div>
-                        
-                        <Select
-                          value={selectedCategory}
-                          onValueChange={setSelectedCategory}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Categories</SelectItem>
-                            {categories.map((category) => (
-                              <SelectItem key={category} value={category}>
-                                {category}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="border rounded-md max-h-[300px] overflow-y-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="w-[50px]"></TableHead>
-                              <TableHead>Name</TableHead>
-                              <TableHead>Category</TableHead>
-                              <TableHead>Details</TableHead>
-                              <TableHead className="text-right">Price</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {filteredItems.length === 0 ? (
-                              <TableRow>
-                                <TableCell colSpan={5} className="text-center py-4 text-gray-500">
-                                  No items found
-                                </TableCell>
-                              </TableRow>
-                            ) : (
-                              filteredItems.map((item) => (
-                                <TableRow 
-                                  key={item.id} 
-                                  className={selectedItemId === item.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
-                                  onClick={() => setSelectedItemId(item.id)}
-                                >
-                                  <TableCell>
-                                    <input
-                                      type="radio"
-                                      name="selectedItem"
-                                      checked={selectedItemId === item.id}
-                                      onChange={() => setSelectedItemId(item.id)}
-                                      className="h-4 w-4 text-alu-primary focus:ring-alu-primary"
-                                    />
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="font-medium">{item.name}</div>
-                                    <div className="text-xs text-gray-500">{item.description}</div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <Badge variant="outline">{item.category}</Badge>
-                                  </TableCell>
-                                  <TableCell>
-                                    {item.category === 'Shutter' && (
-                                      <span className="text-sm">{item.material}, {item.thickness}mm, {item.color}</span>
-                                    )}
-                                    {item.category === 'OuterFrame' && (
-                                      <span className="text-sm">{item.style}, {item.material}, {item.color}</span>
-                                    )}
-                                    {item.category === 'Glass' && (
-                                      <span className="text-sm">{item.type}, {item.thickness}mm</span>
-                                    )}
-                                    {(item.category === 'Accessory' || item.category === 'Hardware' || item.category === 'Other') && (
-                                      <span className="text-sm">{item.type}</span>
-                                    )}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {['Shutter', 'OuterFrame', 'Glass'].includes(item.category) ? (
-                                      <div>
-                                        <div>₹{areaBasedRates[item.category as keyof typeof areaBasedRates][selectedSeries]} per 1000mm²</div>
-                                        <div className="text-xs text-gray-500">(Area based pricing)</div>
-                                      </div>
-                                    ) : (
-                                      <div>
-                                        <div>₹{calculateAdjustedPrice(item).toFixed(2)}</div>
-                                        {getSeriesMultiplier() !== 1 && (
-                                          <div className="text-xs text-gray-500">
-                                            <span className="line-through">₹{item.price.toFixed(2)}</span>
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              ))
+              
+              <div>
+                <Label htmlFor="category">Category</Label>
+                <Select 
+                  value={currentItem.category} 
+                  onValueChange={(value) => handleSelectChange(value, 'category')}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Aluminum Profiles">Aluminum Profiles</SelectItem>
+                    <SelectItem value="Glass Panels">Glass Panels</SelectItem>
+                    <SelectItem value="Accessories">Accessories</SelectItem>
+                    <SelectItem value="Hardware">Hardware</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="quantity">Quantity</Label>
+                <Input 
+                  id="quantity" 
+                  name="quantity" 
+                  type="number" 
+                  min="1" 
+                  value={currentItem.quantity} 
+                  onChange={handleItemChange}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="unit">Unit</Label>
+                <Select 
+                  value={currentItem.unit} 
+                  onValueChange={(value) => handleSelectChange(value, 'unit')}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pcs">pcs</SelectItem>
+                    <SelectItem value="set">set</SelectItem>
+                    <SelectItem value="meter">meter</SelectItem>
+                    <SelectItem value="sqm">sqm</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="unitPrice">Unit Price (₹)</Label>
+                <Input 
+                  id="unitPrice" 
+                  name="unitPrice" 
+                  type="number" 
+                  min="0" 
+                  step="0.01" 
+                  value={currentItem.unitPrice} 
+                  onChange={handleItemChange}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Input 
+                  id="description" 
+                  name="description" 
+                  value={currentItem.description || ''} 
+                  onChange={handleItemChange} 
+                  placeholder="Optional description"
+                />
+              </div>
+            </div>
+            
+            <Button onClick={addItem} className="w-full">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Item
+            </Button>
+          </div>
+          
+          {/* Items list */}
+          <div className="mb-6">
+            <h3 className="text-md font-medium mb-3">Items ({quotation.items.length})</h3>
+            
+            {quotation.items.length === 0 ? (
+              <div className="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <p className="text-gray-500">No items added yet</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
+                    <tr>
+                      <th className="px-4 py-2 text-left">Item</th>
+                      <th className="px-4 py-2 text-left">Category</th>
+                      <th className="px-4 py-2 text-right">Qty</th>
+                      <th className="px-4 py-2 text-right">Unit Price</th>
+                      <th className="px-4 py-2 text-right">Total</th>
+                      <th className="px-4 py-2 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {quotation.items.map((item) => (
+                      <tr key={item.id} className="border-b border-gray-200 dark:border-gray-700">
+                        <td className="px-4 py-3">
+                          <div>
+                            <div className="font-medium">{item.name}</div>
+                            {item.description && (
+                              <div className="text-sm text-gray-500">{item.description}</div>
                             )}
-                          </TableBody>
-                        </Table>
-                      </div>
-                      
-                      {selectedItemNeedsDimensions() && (
-                        <div className="grid gap-4 p-4 bg-gray-50 rounded-lg border">
-                          <h3 className="font-medium flex items-center">
-                            <Ruler className="h-4 w-4 mr-2" />
-                            Dimensions
-                          </h3>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="width">Width (mm)</Label>
-                              <Input
-                                id="width"
-                                type="number"
-                                min={100}
-                                max={5000}
-                                value={itemWidth || ''}
-                                onChange={(e) => setItemWidth(Number(e.target.value))}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="height">Height (mm)</Label>
-                              <Input
-                                id="height"
-                                type="number"
-                                min={100}
-                                max={5000}
-                                value={itemHeight || ''}
-                                onChange={(e) => setItemHeight(Number(e.target.value))}
-                              />
-                            </div>
                           </div>
-                          
-                          {itemWidth > 0 && itemHeight > 0 && (
-                            <div>
-                              <div className="text-sm">
-                                <span className="font-medium">Total Area:</span> {itemArea.toLocaleString()} mm² 
-                                ({(itemArea/1000000).toFixed(2)} m²)
-                              </div>
-                              
-                              {selectedItemId && (
-                                <div className="text-sm mt-1">
-                                  <span className="font-medium">Price:</span> ₹
-                                  {calculateAreaBasedPrice(
-                                    inventoryData.find(item => item.id === selectedItemId)?.category as ItemCategory,
-                                    itemArea
-                                  ).toFixed(2)}
-                                </div>
-                              )}
-                              
-                              <div className="text-xs text-gray-500 mt-1 flex items-center">
-                                <Info className="h-3 w-3 mr-1 flex-shrink-0" />
-                                <span>
-                                  {selectedItemId && inventoryData.find(item => item.id === selectedItemId)?.category} 
-                                  {' '}are priced at ₹
-                                  {selectedItemId && 
-                                    areaBasedRates[
-                                      inventoryData.find(item => item.id === selectedItemId)?.category as keyof typeof areaBasedRates
-                                    ]?.[selectedSeries]
-                                  } per 1000mm²
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      
-                      <div className="grid gap-2">
-                        <Label htmlFor="quantity">Quantity</Label>
-                        <div className="flex items-center">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                            disabled={quantity <= 1}
-                            className="h-8 w-8 rounded-r-none"
+                        </td>
+                        <td className="px-4 py-3">{item.category}</td>
+                        <td className="px-4 py-3 text-right">{item.quantity} {item.unit}</td>
+                        <td className="px-4 py-3 text-right">₹{item.unitPrice.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right font-medium">₹{item.totalPrice.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-center">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => removeItem(item.id)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
                           >
-                            -
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                          <Input
-                            id="quantity"
-                            type="number"
-                            min={1}
-                            value={quantity}
-                            onChange={(e) => setQuantity(Number(e.target.value))}
-                            disabled={!selectedItemId}
-                            className="rounded-none text-center h-8 min-w-0 w-20"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={() => setQuantity(quantity + 1)}
-                            disabled={!selectedItemId}
-                            className="h-8 w-8 rounded-l-none"
-                          >
-                            +
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <DialogFooter>
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedItemId('');
-                          setQuantity(1);
-                          setItemWidth(0);
-                          setItemHeight(0);
-                          setItemArea(0);
-                          setShowAddItemDialog(false);
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        onClick={handleAddItem}
-                        disabled={!selectedItemId || quantity <= 0 || (selectedItemNeedsDimensions() && (itemWidth <= 0 || itemHeight <= 0))}
-                        className="bg-alu-primary hover:bg-alu-primary/90"
-                      >
-                        Add to Quotation
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-gray-50 dark:bg-gray-800 font-semibold">
+                    <tr>
+                      <td colSpan={4} className="px-4 py-3 text-right">Total:</td>
+                      <td className="px-4 py-3 text-right">₹{quotation.total.toFixed(2)}</td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
-              
-              <div className="mb-4">
-                <Badge className="bg-alu-accent text-white text-sm font-medium px-3 py-1">
-                  {selectedSeries.charAt(0).toUpperCase() + selectedSeries.slice(1)} Series
-                </Badge>
-              </div>
-              
-              <div className="border rounded-md overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead className="text-center">Quantity</TableHead>
-                      <TableHead className="text-right">Unit Price</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead className="w-[80px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedItems.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                          <div className="flex flex-col items-center">
-                            <Calculator size={32} className="mb-2 text-gray-400" />
-                            <p>No items added to quotation yet</p>
-                            <p className="text-sm mt-1">Click the "Add Item" button to start building your quote</p>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      selectedItems.map((item, index) => (
-                        <TableRow key={`${item.id}-${item.width || ''}-${item.height || ''}-${index}`}>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{item.name}</div>
-                              <div className="text-xs text-gray-500">{item.category}</div>
-                              {item.width && item.height && item.area && (
-                                <div className="text-xs text-gray-500 mt-1">
-                                  {item.width}mm × {item.height}mm = {item.area.toLocaleString()} mm²
-                                  {item.perUnitPrice && (
-                                    <span className="ml-1">
-                                      (₹{item.perUnitPrice} per 1000mm²)
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex items-center justify-center">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                onClick={() => handleUpdateQuantity(
-                                  item.id, 
-                                  item.quantity - 1,
-                                  item.width,
-                                  item.height
-                                )}
-                                disabled={item.quantity <= 1}
-                              >
-                                -
-                              </Button>
-                              <span className="w-8 text-center">{item.quantity}</span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                onClick={() => handleUpdateQuantity(
-                                  item.id, 
-                                  item.quantity + 1,
-                                  item.width,
-                                  item.height
-                                )}
-                              >
-                                +
-                              </Button>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">₹{item.unitPrice.toFixed(2)}</TableCell>
-                          <TableCell className="text-right font-medium">₹{item.totalPrice.toFixed(2)}</TableCell>
-                          <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-red-500"
-                              onClick={() => handleRemoveItem(item.id, item.width, item.height)}
-                            >
-                              <Trash2 size={16} />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+            )}
+          </div>
           
-          {selectedItems.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
+          {/* Action buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-end">
+            <Button 
+              variant="outline" 
+              onClick={() => saveQuotation('Draft')} 
+              disabled={isSaving}
             >
-              <Card className="glass-card shadow-md hover:shadow-lg transition-shadow duration-300">
-                <CardContent className="p-6">
-                  <h2 className="text-lg font-semibold mb-4">Cost Summary</h2>
-                  
-                  <div className="space-y-3">
-                    <div className="flex justify-between py-2">
-                      <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
-                      <span>₹{subtotal.toFixed(2)}</span>
-                    </div>
-                    
-                    <div className="flex justify-between py-2">
-                      <span className="text-gray-600 dark:text-gray-400 flex items-center">
-                        Wastage ({wastagePercent}%):
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <Info size={14} className="ml-1 text-gray-400" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="max-w-xs">Estimated material wastage during manufacturing and installation</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </span>
-                      <span>₹{wastageAmount.toFixed(2)}</span>
-                    </div>
-                    
-                    {discountPercent > 0 && (
-                      <div className="flex justify-between py-2 text-alu-accent">
-                        <span className="flex items-center">
-                          Discount ({discountPercent}%):
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <Info size={14} className="ml-1 text-gray-400" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="max-w-xs">Discount applied to subtotal + wastage</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </span>
-                        <span>-₹{discountAmount.toFixed(2)}</span>
-                      </div>
-                    )}
-                    
-                    <div className="flex justify-between py-2">
-                      <span className="text-gray-600 dark:text-gray-400">Taxable Amount:</span>
-                      <span>₹{taxableAmount.toFixed(2)}</span>
-                    </div>
-                    
-                    <div className="flex justify-between py-2">
-                      <span className="text-gray-600 dark:text-gray-400">Tax (GST {taxPercent}%):</span>
-                      <span>₹{taxAmount.toFixed(2)}</span>
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div className="flex justify-between py-2 font-bold text-lg">
-                      <span>Total:</span>
-                      <span className="text-alu-primary">₹{total.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-          
-          <div className="flex justify-end space-x-3">
-            <Button
-              variant="outline"
-              onClick={() => navigate('/quotations')}
-            >
-              Cancel
+              <Save className="mr-2 h-4 w-4" />
+              Save as Draft
             </Button>
             
-            <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-alu-primary hover:bg-alu-primary/90">
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Quotation
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Save Quotation</DialogTitle>
-                  <DialogDescription>
-                    Choose how you want to save this quotation
-                  </DialogDescription>
-                </DialogHeader>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-                  <Button
-                    variant="outline"
-                    className="flex flex-col items-center justify-center h-24 text-left p-4"
-                    onClick={() => handleSaveQuotation('Draft')}
-                  >
-                    <Save className="h-8 w-8 mb-2" />
-                    <div>
-                      <div className="font-medium">Save as Draft</div>
-                      <div className="text-sm text-gray-500">Edit later</div>
-                    </div>
-                  </Button>
-                  
-                  <Button
-                    className="flex flex-col items-center justify-center h-24 text-left p-4 bg-alu-primary hover:bg-alu-primary/90"
-                    onClick={() => handleEmailQuotation()}
-                  >
-                    <Mail className="h-8 w-8 mb-2" />
-                    <div>
-                      <div className="font-medium">Save & Email</div>
-                      <div className="text-sm">Send to customer</div>
-                    </div>
-                  </Button>
-                </div>
-                
-                <div className="flex justify-between">
-                  <Button
-                    variant="outline"
-                    className="flex items-center"
-                    onClick={() => {
-                      handlePrintPdf();
-                      setIsSaveDialogOpen(false);
-                    }}
-                  >
-                    <Printer className="h-4 w-4 mr-2" />
-                    Print
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    className="flex items-center"
-                    onClick={() => {
-                      handleDownloadPdf();
-                      setIsSaveDialogOpen(false);
-                    }}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Download PDF
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <Button 
+              onClick={() => saveQuotation('Sent')} 
+              disabled={isSaving}
+              className="bg-alu-primary hover:bg-alu-primary/90"
+            >
+              <Send className="mr-2 h-4 w-4" />
+              Save and Send
+            </Button>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );
