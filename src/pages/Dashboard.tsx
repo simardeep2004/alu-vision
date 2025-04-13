@@ -18,8 +18,9 @@ import {
   Legend
 } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
-// Mock data for Delhi NCR, India
+// Delhi NCR, India specific data
 const quotationData = [
   { month: 'Jan', count: 15 },
   { month: 'Feb', count: 22 },
@@ -63,21 +64,87 @@ const Dashboard = () => {
   });
   
   const [chartView, setChartView] = useState<'bar' | 'line'>('bar');
+  const [activities, setActivities] = useState(recentActivities);
+  const [chartData, setChartData] = useState(quotationData);
   
-  // Simulate loading data
+  // Initial data load and real-time subscription
   useEffect(() => {
-    // In a real app, this would be an API call to Supabase
-    setTimeout(() => {
-      setStats({
-        totalQuotations: 149,
-        totalProducts: 647,
-        totalValue: 9650000, // in INR
-        lowStockItems: 8
-      });
-    }, 1000);
+    // Load initial data
+    const fetchData = async () => {
+      try {
+        // Get quotations count from Supabase
+        const { count: quotationsCount, error: quotationsError } = await supabase
+          .from('quotations')
+          .select('*', { count: 'exact', head: true });
+          
+        if (quotationsError) throw quotationsError;
+        
+        // Simulate other data
+        setStats({
+          totalQuotations: quotationsCount || 149,
+          totalProducts: 647,
+          totalValue: 9650000, // in INR
+          lowStockItems: 8
+        });
+        
+        // Get recent quotations
+        const { data: recentQuotations, error: recentError } = await supabase
+          .from('quotations')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(3);
+          
+        if (recentError) throw recentError;
+        
+        if (recentQuotations && recentQuotations.length > 0) {
+          const newActivities = recentQuotations.map((quote, index) => ({
+            id: index + 1,
+            type: 'Quotation',
+            description: `New quotation #${quote.id.slice(0, 4)} created for ${quote.customer_name}, Delhi NCR`,
+            time: getTimeAgo(new Date(quote.created_at))
+          }));
+          
+          // Combine with existing activities
+          setActivities([...newActivities, ...recentActivities.slice(newActivities.length)]);
+        }
+        
+        // Get monthly quotation data
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+        const { data: monthlyData, error: monthlyError } = await supabase
+          .from('quotations')
+          .select('date')
+          .gte('date', '2025-01-01')
+          .lte('date', '2025-06-30');
+          
+        if (monthlyError) throw monthlyError;
+        
+        if (monthlyData && monthlyData.length > 0) {
+          // Count quotations per month
+          const monthlyCounts = months.map(month => {
+            const monthIndex = months.indexOf(month);
+            const count = monthlyData.filter(q => {
+              const date = new Date(q.date);
+              return date.getMonth() === monthIndex;
+            }).length;
+            
+            // If no quotations for this month, use the sample data
+            return { 
+              month, 
+              count: count || quotationData.find(d => d.month === month)?.count || 0 
+            };
+          });
+          
+          setChartData(monthlyCounts);
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      }
+    };
     
-    // Attempt to subscribe to real-time updates
-    const channel = supabase
+    fetchData();
+    
+    // Subscribe to real-time updates
+    const quotationsChannel = supabase
       .channel('public:quotations')
       .on('postgres_changes', { 
         event: 'INSERT', 
@@ -85,66 +152,123 @@ const Dashboard = () => {
         table: 'quotations' 
       }, (payload) => {
         console.log('New quotation:', payload);
-        // Update stats in real-time
+        
+        // Update stats
         setStats(prev => ({
           ...prev,
           totalQuotations: prev.totalQuotations + 1
         }));
+        
+        // Update activities
+        const newQuotation = payload.new;
+        const newActivity = {
+          id: Math.random(),
+          type: 'Quotation',
+          description: `New quotation #${newQuotation.id.slice(0, 4)} created for ${newQuotation.customer_name}, Delhi NCR`,
+          time: 'just now'
+        };
+        
+        setActivities(prev => [newActivity, ...prev.slice(0, 4)]);
+        
+        // Notify user
+        toast.success('New quotation created!', {
+          description: `${newQuotation.customer_name} - ₹${(newQuotation.total).toLocaleString('en-IN')}`
+        });
+        
+        // Update chart data
+        const date = new Date(newQuotation.date);
+        const monthName = new Date(date).toLocaleString('en-US', { month: 'short' });
+        
+        setChartData(prev => {
+          const newData = [...prev];
+          const monthIndex = newData.findIndex(d => d.month === monthName);
+          
+          if (monthIndex >= 0) {
+            newData[monthIndex] = {
+              ...newData[monthIndex],
+              count: newData[monthIndex].count + 1
+            };
+          }
+          
+          return newData;
+        });
       })
       .subscribe();
       
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(quotationsChannel);
     };
   }, []);
   
+  // Helper function to format time ago
+  const getTimeAgo = (date: Date) => {
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + ' years ago';
+    
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + ' months ago';
+    
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + ' days ago';
+    
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + ' hours ago';
+    
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + ' minutes ago';
+    
+    return 'just now';
+  };
+  
   return (
     <div className="page-container">
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      <h1 className="text-2xl font-bold mb-6">Delhi NCR Dashboard</h1>
       
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="stats-card">
+        <Card className="p-6 hover:shadow-md transition-shadow">
           <h3 className="text-gray-500 text-sm font-medium mb-1">Total Quotations</h3>
           <p className="text-3xl font-bold text-alu-primary">{stats.totalQuotations}</p>
           <span className="text-green-500 text-xs mt-2">↑ 12% from last month</span>
-        </div>
+        </Card>
         
-        <div className="stats-card">
+        <Card className="p-6 hover:shadow-md transition-shadow">
           <h3 className="text-gray-500 text-sm font-medium mb-1">Products in Inventory</h3>
           <p className="text-3xl font-bold text-alu-primary">{stats.totalProducts}</p>
           <span className="text-xs mt-2">Across 4 categories</span>
-        </div>
+        </Card>
         
-        <div className="stats-card">
+        <Card className="p-6 hover:shadow-md transition-shadow">
           <h3 className="text-gray-500 text-sm font-medium mb-1">Inventory Value</h3>
           <p className="text-3xl font-bold text-alu-primary">₹{(stats.totalValue/100000).toFixed(2)} Lakh</p>
           <span className="text-green-500 text-xs mt-2">↑ 8% from last quarter</span>
-        </div>
+        </Card>
         
-        <div className="stats-card">
+        <Card className="p-6 hover:shadow-md transition-shadow">
           <h3 className="text-gray-500 text-sm font-medium mb-1">Low Stock Items</h3>
-          <p className="text-3xl font-bold text-alu-warning">{stats.lowStockItems}</p>
+          <p className="text-3xl font-bold text-orange-500">{stats.lowStockItems}</p>
           <span className="text-orange-500 text-xs mt-2">Requires attention</span>
-        </div>
+        </Card>
       </div>
       
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Quotation Chart */}
-        <Card className="glass-card p-6">
+        <Card className="p-6 hover:shadow-md transition-shadow">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold">Delhi NCR Quotations</h2>
             <div className="flex space-x-2">
               <button
                 onClick={() => setChartView('bar')}
-                className={`p-1 rounded ${chartView === 'bar' ? 'bg-alu-primary text-white' : 'text-gray-400'}`}
+                className={`p-1.5 rounded ${chartView === 'bar' ? 'bg-alu-primary text-white' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
               >
                 <BarChart size={18} />
               </button>
               <button
                 onClick={() => setChartView('line')}
-                className={`p-1 rounded ${chartView === 'line' ? 'bg-alu-primary text-white' : 'text-gray-400'}`}
+                className={`p-1.5 rounded ${chartView === 'line' ? 'bg-alu-primary text-white' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
               >
                 <LineChart size={18} />
               </button>
@@ -154,19 +278,19 @@ const Dashboard = () => {
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               {chartView === 'bar' ? (
-                <ReBarChart data={quotationData}>
+                <ReBarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis />
-                  <Tooltip />
+                  <Tooltip formatter={(value) => [`${value} Quotations`, 'Count']} />
                   <Bar dataKey="count" fill="#4682B4" />
                 </ReBarChart>
               ) : (
-                <ReLineChart data={quotationData}>
+                <ReLineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis />
-                  <Tooltip />
+                  <Tooltip formatter={(value) => [`${value} Quotations`, 'Count']} />
                   <Line type="monotone" dataKey="count" stroke="#4682B4" activeDot={{ r: 8 }} />
                 </ReLineChart>
               )}
@@ -175,7 +299,7 @@ const Dashboard = () => {
         </Card>
         
         {/* Top Products Chart */}
-        <Card className="glass-card p-6">
+        <Card className="p-6 hover:shadow-md transition-shadow">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold">Top Products Used in NCR</h2>
             <PieChart size={18} className="text-gray-400" />
@@ -198,7 +322,7 @@ const Dashboard = () => {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip formatter={(value) => [`${value} Projects`, 'Used In']} />
                 <Legend />
               </RePieChart>
             </ResponsiveContainer>
@@ -208,10 +332,10 @@ const Dashboard = () => {
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Activities */}
-        <Card className="glass-card p-6 lg:col-span-2">
+        <Card className="p-6 hover:shadow-md transition-shadow lg:col-span-2">
           <h2 className="text-lg font-semibold mb-4">Recent Activities in Delhi NCR</h2>
           <div className="space-y-4">
-            {recentActivities.map((activity) => (
+            {activities.map((activity) => (
               <div 
                 key={activity.id} 
                 className="flex items-start border-b border-gray-100 dark:border-gray-700 pb-3 last:border-0 last:pb-0"
@@ -231,7 +355,7 @@ const Dashboard = () => {
         </Card>
         
         {/* Inventory Status */}
-        <Card className="glass-card p-6">
+        <Card className="p-6 hover:shadow-md transition-shadow">
           <h2 className="text-lg font-semibold mb-4">Delhi NCR Inventory Status</h2>
           <div className="space-y-4">
             {inventoryData.map((item, index) => (

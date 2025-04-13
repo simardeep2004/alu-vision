@@ -701,6 +701,143 @@ const QuotationBuilder = () => {
     return item?.category === 'Shutter' || item?.category === 'OuterFrame' || item?.category === 'Glass';
   };
   
+  const ItemSelectionModal = ({ isOpen, onClose, onSelect }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedItem, setSelectedItem] = useState(null);
+    const [quantity, setQuantity] = useState(1);
+    
+    const products = [
+      { id: 'P001', name: 'Aluminum Profile A-101', category: 'Profiles', price: 450, unit: 'meter' },
+      { id: 'P002', name: 'Aluminum Profile B-202', category: 'Profiles', price: 520, unit: 'meter' },
+      { id: 'P003', name: 'Glass Panel Clear 8mm', category: 'Glass', price: 1200, unit: 'sqm' },
+      { id: 'P004', name: 'Glass Panel Tinted 6mm', category: 'Glass', price: 1500, unit: 'sqm' },
+      { id: 'P005', name: 'Handle Type A', category: 'Hardware', price: 250, unit: 'piece' },
+      { id: 'P006', name: 'Lock Mechanism Standard', category: 'Hardware', price: 350, unit: 'piece' },
+      { id: 'P007', name: 'Weather Strip Type B', category: 'Accessories', price: 120, unit: 'meter' },
+      { id: 'P008', name: 'Silicon Sealant White', category: 'Accessories', price: 180, unit: 'tube' },
+    ];
+    
+    const filteredProducts = products.filter(product => 
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.category.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    const handleSelect = (product) => {
+      setSelectedItem(product);
+    };
+    
+    const handleAddItem = () => {
+      if (selectedItem) {
+        onSelect({
+          ...selectedItem,
+          quantity: quantity,
+          total: selectedItem.price * quantity
+        });
+        setSelectedItem(null);
+        setQuantity(1);
+        onClose();
+      }
+    };
+    
+    const handleQuantityChange = (e) => {
+      const value = parseInt(e.target.value);
+      if (!isNaN(value) && value > 0) {
+        setQuantity(value);
+      }
+    };
+    
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Select Product</DialogTitle>
+            <DialogDescription>
+              Search and select a product to add to your quotation.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="mb-4">
+            <Input
+              placeholder="Search products..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="mb-4"
+            />
+            
+            <div className="max-h-[300px] overflow-y-auto border rounded-md">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                  <tr>
+                    <th className="px-4 py-2 text-left">Product</th>
+                    <th className="px-4 py-2 text-left">Category</th>
+                    <th className="px-4 py-2 text-right">Price (₹)</th>
+                    <th className="px-4 py-2 text-center">Unit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredProducts.map((product) => (
+                    <tr 
+                      key={product.id} 
+                      className={`border-t hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${
+                        selectedItem?.id === product.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                      }`}
+                      onClick={() => handleSelect(product)}
+                    >
+                      <td className="px-4 py-2">{product.name}</td>
+                      <td className="px-4 py-2">{product.category}</td>
+                      <td className="px-4 py-2 text-right">{product.price.toLocaleString('en-IN')}</td>
+                      <td className="px-4 py-2 text-center">{product.unit}</td>
+                    </tr>
+                  ))}
+                  {filteredProducts.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                        No products found. Try a different search term.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          {selectedItem && (
+            <div className="flex items-center justify-between border-t pt-4">
+              <div>
+                <p className="font-medium">{selectedItem.name}</p>
+                <p className="text-sm text-gray-500">₹{selectedItem.price.toLocaleString('en-IN')} per {selectedItem.unit}</p>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <div className="flex items-center">
+                  <label htmlFor="quantity" className="mr-2 text-sm font-medium">
+                    Quantity:
+                  </label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    min="1"
+                    value={quantity}
+                    onChange={handleQuantityChange}
+                    className="w-20"
+                  />
+                </div>
+                
+                <Button onClick={handleAddItem} className="ml-auto">
+                  Add
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+  
   return (
     <div className="page-container">
       <div className="flex items-center mb-6">

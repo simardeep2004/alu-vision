@@ -1,9 +1,11 @@
+
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Menu } from 'lucide-react';
+import { Menu, ChevronDown, Bell } from 'lucide-react';
 
 import { ModeToggle } from "@/components/ModeToggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,93 +25,151 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 py-4">
-      <div className="container flex items-center justify-between">
+    <header className="sticky top-0 z-30 bg-white dark:bg-gray-900 border-b dark:border-gray-800 py-3 shadow-sm">
+      <div className="container mx-auto px-4 flex items-center justify-between">
         {/* Logo and Brand */}
         <Link to="/dashboard" className="flex items-center font-bold text-xl text-alu-primary">
-          TheAluVision
+          <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-alu-primary">TheAluVision</span>
         </Link>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-6">
-          <NavLink to="/dashboard" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "hover:text-gray-500 dark:hover:text-gray-300"}>
+          <NavLink to="/dashboard" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "text-gray-600 dark:text-gray-300 hover:text-alu-primary dark:hover:text-alu-primary transition-colors"}>
             Dashboard
           </NavLink>
-          <NavLink to="/inventory" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "hover:text-gray-500 dark:hover:text-gray-300"}>
+          <NavLink to="/inventory" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "text-gray-600 dark:text-gray-300 hover:text-alu-primary dark:hover:text-alu-primary transition-colors"}>
             Inventory
           </NavLink>
-          <NavLink to="/quotations" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "hover:text-gray-500 dark:hover:text-gray-300"}>
+          <NavLink to="/quotations" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "text-gray-600 dark:text-gray-300 hover:text-alu-primary dark:hover:text-alu-primary transition-colors"}>
             Quotations
           </NavLink>
           {user?.isAdmin && (
-            <NavLink to="/admin" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "hover:text-gray-500 dark:hover:text-gray-300"}>
+            <NavLink to="/admin" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "text-gray-600 dark:text-gray-300 hover:text-alu-primary dark:hover:text-alu-primary transition-colors"}>
               Admin
             </NavLink>
           )}
-          <NavLink to="/settings" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "hover:text-gray-500 dark:hover:text-gray-300"}>
+          <NavLink to="/crm" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "text-gray-600 dark:text-gray-300 hover:text-alu-primary dark:hover:text-alu-primary transition-colors"}>
+            CRM
+          </NavLink>
+          <NavLink to="/settings" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "text-gray-600 dark:text-gray-300 hover:text-alu-primary dark:hover:text-alu-primary transition-colors"}>
             Settings
           </NavLink>
         </nav>
 
-        {/* User Avatar and Dropdown */}
+        {/* User Actions */}
         <div className="hidden md:flex items-center space-x-4">
+          <Button variant="ghost" size="icon" className="relative">
+            <Bell className="h-5 w-5" />
+            <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
+          </Button>
+          
           <ModeToggle />
+          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="outline-none focus:outline-none">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
-                  <AvatarFallback>CN</AvatarFallback>
+              <Button variant="ghost" className="flex items-center gap-2 focus:outline-none">
+                <Avatar className="h-8 w-8 border border-gray-200 dark:border-gray-700">
+                  <AvatarImage src="https://github.com/shadcn.png" alt={user?.name || 'User'} />
+                  <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
                 </Avatar>
-              </button>
+                <span className="text-sm font-medium hidden xl:inline-block">{user?.name || 'User'}</span>
+                <ChevronDown className="h-4 w-4 text-gray-500" />
+              </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
+            <DropdownMenuContent className="w-56" align="end">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Link to="/profile" className="w-full block">
+                  Profile
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem>
                 <Link to="/settings" className="w-full block">
                   Settings
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => logout()}>Logout</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => logout()} className="text-red-500 focus:text-red-500">
+                Logout
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
 
         {/* Mobile Menu Button */}
-        <div className="md:hidden">
-          <button onClick={toggleMobileMenu} className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-400 focus:outline-none">
-            <Menu className="h-6 w-6" />
-          </button>
+        <div className="md:hidden flex items-center gap-2">
+          <ModeToggle />
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={toggleMobileMenu}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
         </div>
       </div>
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden">
-          <nav className="flex flex-col items-center mt-4 space-y-3">
-            <NavLink to="/dashboard" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "hover:text-gray-500 dark:hover:text-gray-300"}>
+        <div className="md:hidden absolute w-full bg-white dark:bg-gray-900 border-b dark:border-gray-800 shadow-lg z-50">
+          <nav className="flex flex-col py-4 px-6 space-y-3">
+            <NavLink 
+              to="/dashboard" 
+              className={({ isActive }) => isActive ? "text-alu-primary font-medium p-2" : "text-gray-600 dark:text-gray-300 hover:text-alu-primary dark:hover:text-alu-primary p-2 transition-colors"}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
               Dashboard
             </NavLink>
-            <NavLink to="/inventory" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "hover:text-gray-500 dark:hover:text-gray-300"}>
+            <NavLink 
+              to="/inventory" 
+              className={({ isActive }) => isActive ? "text-alu-primary font-medium p-2" : "text-gray-600 dark:text-gray-300 hover:text-alu-primary dark:hover:text-alu-primary p-2 transition-colors"}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
               Inventory
             </NavLink>
-            <NavLink to="/quotations" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "hover:text-gray-500 dark:hover:text-gray-300"}>
+            <NavLink 
+              to="/quotations" 
+              className={({ isActive }) => isActive ? "text-alu-primary font-medium p-2" : "text-gray-600 dark:text-gray-300 hover:text-alu-primary dark:hover:text-alu-primary p-2 transition-colors"}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
               Quotations
             </NavLink>
             {user?.isAdmin && (
-              <NavLink to="/admin" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "hover:text-gray-500 dark:hover:text-gray-300"}>
+              <NavLink 
+                to="/admin" 
+                className={({ isActive }) => isActive ? "text-alu-primary font-medium p-2" : "text-gray-600 dark:text-gray-300 hover:text-alu-primary dark:hover:text-alu-primary p-2 transition-colors"}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
                 Admin
               </NavLink>
             )}
-            <NavLink to="/settings" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "hover:text-gray-500 dark:hover:text-gray-300"}>
+            <NavLink 
+              to="/crm" 
+              className={({ isActive }) => isActive ? "text-alu-primary font-medium p-2" : "text-gray-600 dark:text-gray-300 hover:text-alu-primary dark:hover:text-alu-primary p-2 transition-colors"}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              CRM
+            </NavLink>
+            <NavLink 
+              to="/settings" 
+              className={({ isActive }) => isActive ? "text-alu-primary font-medium p-2" : "text-gray-600 dark:text-gray-300 hover:text-alu-primary dark:hover:text-alu-primary p-2 transition-colors"}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
               Settings
             </NavLink>
-            <ModeToggle />
-            <button onClick={() => logout()} className="hover:text-gray-500 dark:hover:text-gray-300">
-              Logout
-            </button>
+            <div className="border-t dark:border-gray-700 pt-2">
+              <Button 
+                variant="ghost"
+                className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 p-2"
+                onClick={() => {
+                  logout();
+                  setIsMobileMenuOpen(false);
+                }}
+              >
+                Logout
+              </Button>
+            </div>
           </nav>
         </div>
       )}
