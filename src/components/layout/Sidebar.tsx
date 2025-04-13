@@ -97,7 +97,7 @@ const Sidebar = () => {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {user?.name || 'User'}
+                  {user?.full_name || 'User'}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
                   {user?.email || 'user@example.com'}

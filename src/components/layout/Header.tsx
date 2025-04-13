@@ -43,7 +43,7 @@ const Header = () => {
           <NavLink to="/quotations" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "text-gray-600 dark:text-gray-300 hover:text-alu-primary dark:hover:text-alu-primary transition-colors"}>
             Quotations
           </NavLink>
-          {user?.isAdmin && (
+          {user?.role === 'admin' && (
             <NavLink to="/admin" className={({ isActive }) => isActive ? "text-alu-primary font-medium" : "text-gray-600 dark:text-gray-300 hover:text-alu-primary dark:hover:text-alu-primary transition-colors"}>
               Admin
             </NavLink>
@@ -69,10 +69,10 @@ const Header = () => {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 focus:outline-none">
                 <Avatar className="h-8 w-8 border border-gray-200 dark:border-gray-700">
-                  <AvatarImage src="https://github.com/shadcn.png" alt={user?.name || 'User'} />
-                  <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
+                  <AvatarImage src={user?.avatar_url || "https://github.com/shadcn.png"} alt={user?.full_name || 'User'} />
+                  <AvatarFallback>{user?.full_name?.charAt(0) || 'U'}</AvatarFallback>
                 </Avatar>
-                <span className="text-sm font-medium hidden xl:inline-block">{user?.name || 'User'}</span>
+                <span className="text-sm font-medium hidden xl:inline-block">{user?.full_name || 'User'}</span>
                 <ChevronDown className="h-4 w-4 text-gray-500" />
               </Button>
             </DropdownMenuTrigger>
@@ -135,7 +135,7 @@ const Header = () => {
             >
               Quotations
             </NavLink>
-            {user?.isAdmin && (
+            {user?.role === 'admin' && (
               <NavLink 
                 to="/admin" 
                 className={({ isActive }) => isActive ? "text-alu-primary font-medium p-2" : "text-gray-600 dark:text-gray-300 hover:text-alu-primary dark:hover:text-alu-primary p-2 transition-colors"}
