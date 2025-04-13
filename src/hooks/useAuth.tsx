@@ -9,6 +9,7 @@ export type User = {
   name: string;
   email: string;
   role: 'user' | 'admin';
+  isAdmin: boolean; // Add isAdmin property
 };
 
 type AuthContextType = {
@@ -51,7 +52,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const savedUser = localStorage.getItem('aluvision_user');
     if (savedUser) {
       try {
-        setUser(JSON.parse(savedUser));
+        const parsedUser = JSON.parse(savedUser);
+        // Add isAdmin property based on role
+        setUser({
+          ...parsedUser,
+          isAdmin: parsedUser.role === 'admin'
+        });
       } catch (error) {
         console.error('Failed to parse saved user:', error);
         localStorage.removeItem('aluvision_user');
@@ -79,9 +85,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Create user object without password
       const { password: _, ...userWithoutPassword } = foundUser;
       
+      // Add isAdmin property based on role
+      const userWithIsAdmin = {
+        ...userWithoutPassword,
+        isAdmin: userWithoutPassword.role === 'admin'
+      };
+      
       // Save user to state and localStorage
-      setUser(userWithoutPassword);
-      localStorage.setItem('aluvision_user', JSON.stringify(userWithoutPassword));
+      setUser(userWithIsAdmin);
+      localStorage.setItem('aluvision_user', JSON.stringify(userWithIsAdmin));
       
       toast.success('Logged in successfully');
       navigate('/dashboard');
@@ -111,6 +123,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         name,
         email,
         role: 'user' as const,
+        isAdmin: false // Default to not admin
       };
       
       // Save user to state and localStorage

@@ -1,7 +1,7 @@
 
 import { Quotation } from '@/types/quotation';
 import { toast } from 'sonner';
-import { generateQuotationPdf } from './pdfGenerator';
+import { downloadQuotationPdf } from './pdfGenerator';
 
 // In a real application, this would connect to a backend service
 // For now, we'll simulate email sending
@@ -14,7 +14,7 @@ export const emailQuotation = async (quotation: Quotation, recipientEmail: strin
         
         // Generate PDF for attachment (in real app, would attach to email)
         try {
-          generateQuotationPdf(quotation);
+          downloadQuotationPdf(quotation);
           console.log("PDF generated successfully for email");
         } catch (error) {
           console.error("Error generating PDF for email:", error);
