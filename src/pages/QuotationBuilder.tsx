@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -61,6 +60,7 @@ import { motion } from 'framer-motion';
 import { emailQuotation } from '@/utils/emailService';
 import { downloadQuotationPdf, printQuotationPdf } from '@/utils/pdfGenerator';
 import { getCustomerByEmail, getOrCreateCustomerFromQuotation } from '@/utils/crmService';
+import { QuotationItem } from '@/types/quotation';
 
 // Types
 type ItemCategory = 'Shutter' | 'OuterFrame' | 'Glass' | 'Accessory' | 'Hardware' | 'Other';
@@ -322,19 +322,16 @@ const QuotationBuilder = () => {
   const [taxPercent, setTaxPercent] = useState<number>(18); // GST
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   
-  // State for dimensions (for items that need measurements)
   const [itemWidth, setItemWidth] = useState<number>(0);
   const [itemHeight, setItemHeight] = useState<number>(0);
   const [itemArea, setItemArea] = useState<number>(0);
   
-  // Pricing rates per 1000mm² for different measured items
   const areaBasedRates = {
     'Shutter': { standard: 21, premium: 24, luxury: 30 },
     'OuterFrame': { standard: 18, premium: 22, luxury: 28 },
     'Glass': { standard: 15, premium: 20, luxury: 25 }
   };
   
-  // Calculate area when width or height changes
   useEffect(() => {
     if (itemWidth > 0 && itemHeight > 0) {
       const area = itemWidth * itemHeight;
@@ -344,14 +341,12 @@ const QuotationBuilder = () => {
     }
   }, [itemWidth, itemHeight]);
   
-  // Pricing multipliers based on series
   const seriesMultipliers = {
     'standard': 1.0,
     'premium': 1.2,
     'luxury': 1.5
   };
   
-  // Category specific pricing multipliers
   const categoryMultipliers = {
     'Shutter': 1.0,
     'OuterFrame': 1.0,
@@ -361,7 +356,6 @@ const QuotationBuilder = () => {
     'Other': 1.0
   };
   
-  // Calculate total
   const subtotal = selectedItems.reduce((sum, item) => sum + item.totalPrice, 0);
   const wastageAmount = (subtotal * (wastagePercent / 100));
   const discountAmount = ((subtotal + wastageAmount) * (discountPercent / 100));
@@ -369,12 +363,10 @@ const QuotationBuilder = () => {
   const taxAmount = taxableAmount * (taxPercent / 100);
   const total = taxableAmount + taxAmount;
   
-  // Get series multiplier
   const getSeriesMultiplier = () => {
     return seriesMultipliers[selectedSeries];
   };
   
-  // Calculate area-based price
   const calculateAreaBasedPrice = (category: ItemCategory, area: number): number => {
     if (!area || area <= 0) return 0;
     
@@ -382,22 +374,18 @@ const QuotationBuilder = () => {
     return (area / 1000) * baseRatePerThousandSqMm;
   };
   
-  // Calculate item price with series adjustment
   const calculateAdjustedPrice = (item: InventoryItem, width?: number, height?: number): number => {
-    // For area-based pricing items (Shutters, OuterFrames, Glass)
     if ((item.category === 'Shutter' || item.category === 'OuterFrame' || item.category === 'Glass') 
         && width && height && width > 0 && height > 0) {
       const area = width * height;
       return calculateAreaBasedPrice(item.category as ItemCategory, area);
     }
     
-    // For regular items
     const seriesMultiplier = getSeriesMultiplier();
     const categoryMultiplier = categoryMultipliers[item.category as keyof typeof categoryMultipliers];
     return item.price * seriesMultiplier * categoryMultiplier;
   };
   
-  // Get per unit price (price per 1000mm²)
   const getPerUnitPrice = (category: string): number => {
     if (category === 'Shutter' || category === 'OuterFrame' || category === 'Glass') {
       return areaBasedRates[category as keyof typeof areaBasedRates]?.[selectedSeries] || 0;
@@ -405,7 +393,6 @@ const QuotationBuilder = () => {
     return 0;
   };
   
-  // Update filtered items when search query or category changes
   useEffect(() => {
     const filtered = inventoryData.filter(item => {
       const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -420,12 +407,10 @@ const QuotationBuilder = () => {
     setFilteredItems(filtered);
   }, [searchQuery, selectedCategory]);
   
-  // Reset dimensions when selecting a new item
   useEffect(() => {
     if (selectedItemId) {
       const item = inventoryData.find(item => item.id === selectedItemId);
       if (item) {
-        // Reset dimensions if changing between different types of items
         setItemWidth(0);
         setItemHeight(0);
         setItemArea(0);
@@ -433,11 +418,9 @@ const QuotationBuilder = () => {
     }
   }, [selectedItemId]);
   
-  // Auto-fill customer information if email exists in CRM
   const handleCustomerEmailChange = (email: string) => {
     setCustomerEmail(email);
     
-    // Check if customer exists in CRM
     const customer = getCustomerByEmail(email);
     if (customer) {
       setCustomerName(customer.name);
@@ -447,42 +430,37 @@ const QuotationBuilder = () => {
     }
   };
   
-  // Handle add item
   const handleAddItem = () => {
     if (!selectedItemId || quantity <= 0) return;
     
     const item = inventoryData.find(item => item.id === selectedItemId);
     if (!item) return;
     
-    // Check if dimensions are required but not provided
-    const needsDimensions = (item.category === 'Shutter' || item.category === 'OuterFrame' || item.category === 'Glass');
-    if (needsDimensions && (itemWidth <= 0 || itemHeight <= 0)) {
-      toast.error(`Please specify dimensions for ${item.category}`);
-      return;
+    if (item.category === 'Shutter' || item.category === 'OuterFrame' || item.category === 'Glass') {
+      if (itemWidth <= 0 || itemHeight <= 0) {
+        toast.error(`Please specify dimensions for ${item.category}`);
+        return;
+      }
     }
     
-    // Calculate the price based on item type
     let adjustedPrice = 0;
     let perUnitPrice = 0;
     
-    if (needsDimensions) {
+    if (item.category === 'Shutter' || item.category === 'OuterFrame' || item.category === 'Glass') {
       perUnitPrice = getPerUnitPrice(item.category);
       adjustedPrice = calculateAreaBasedPrice(item.category as ItemCategory, itemArea);
     } else {
       adjustedPrice = calculateAdjustedPrice(item);
     }
     
-    // Check if item already exists in the quotation
     const existingItemIndex = selectedItems.findIndex(i => {
-      // For dimensional items, check dimensions match
-      if (needsDimensions) {
+      if (item.category === 'Shutter' || item.category === 'OuterFrame' || item.category === 'Glass') {
         return i.id === item.id && i.width === itemWidth && i.height === itemHeight;
       }
       return i.id === item.id;
     });
     
     if (existingItemIndex >= 0) {
-      // Update existing item
       const updatedItems = [...selectedItems];
       const existingItem = updatedItems[existingItemIndex];
       const newQuantity = existingItem.quantity + quantity;
@@ -495,19 +473,17 @@ const QuotationBuilder = () => {
       
       setSelectedItems(updatedItems);
     } else {
-      // Add new item
       const newItem: QuotationItem = {
         id: item.id,
         name: item.name,
         category: item.category,
         quantity,
-        unit: needsDimensions ? 'set' : 'pcs',
+        unit: item.category === 'Shutter' || item.category === 'OuterFrame' || item.category === 'Glass' ? 'set' : 'pcs',
         unitPrice: adjustedPrice,
         totalPrice: quantity * adjustedPrice,
       };
       
-      // Add dimensions for measured items
-      if (needsDimensions) {
+      if (item.category === 'Shutter' || item.category === 'OuterFrame' || item.category === 'Glass') {
         newItem.width = itemWidth;
         newItem.height = itemHeight;
         newItem.area = itemArea;
@@ -517,7 +493,6 @@ const QuotationBuilder = () => {
       setSelectedItems([...selectedItems, newItem]);
     }
     
-    // Reset form
     setSelectedItemId('');
     setQuantity(1);
     setItemWidth(0);
@@ -528,9 +503,7 @@ const QuotationBuilder = () => {
     toast.success('Item added to quotation');
   };
   
-  // Handle remove item
   const handleRemoveItem = (id: string, width?: number, height?: number) => {
-    // For dimensional items, also check dimensions
     if (width && height) {
       setSelectedItems(selectedItems.filter(item => 
         !(item.id === id && item.width === width && item.height === height)
@@ -541,12 +514,10 @@ const QuotationBuilder = () => {
     toast.success('Item removed from quotation');
   };
   
-  // Handle update item quantity
   const handleUpdateQuantity = (id: string, newQuantity: number, width?: number, height?: number) => {
     if (newQuantity <= 0) return;
     
     const updatedItems = selectedItems.map(item => {
-      // For dimensional items, check all criteria
       if (width && height) {
         if (item.id === id && item.width === width && item.height === height) {
           return {
@@ -568,15 +539,12 @@ const QuotationBuilder = () => {
     setSelectedItems(updatedItems);
   };
   
-  // Handle change series - update all pricing
   const handleChangeSeries = (newSeries: QuotationSeries) => {
     setSelectedSeries(newSeries);
     
-    // Update all item prices based on the new series
     const updatedItems = selectedItems.map(item => {
       if (item.width && item.height && item.area && 
          (item.category === 'Shutter' || item.category === 'OuterFrame' || item.category === 'Glass')) {
-        // Update area-based pricing
         const perUnitPrice = areaBasedRates[item.category as keyof typeof areaBasedRates]?.[newSeries] || 0;
         const newUnitPrice = (item.area / 1000) * perUnitPrice;
         
@@ -587,7 +555,6 @@ const QuotationBuilder = () => {
           perUnitPrice: perUnitPrice,
         };
       } else {
-        // Update regular item pricing
         const inventoryItem = inventoryData.find(invItem => invItem.id === item.id);
         if (inventoryItem) {
           const seriesMultiplier = seriesMultipliers[newSeries];
@@ -608,12 +575,10 @@ const QuotationBuilder = () => {
     toast.success(`Changed to ${newSeries.charAt(0).toUpperCase() + newSeries.slice(1)} series pricing`);
   };
   
-  // Generate a random quotation ID
   const generateQuotationId = (): string => {
     return `Q${Math.floor(1000 + Math.random() * 9000)}`;
   };
   
-  // Handle download PDF
   const handleDownloadPdf = () => {
     const quotation = {
       id: generateQuotationId(),
@@ -631,7 +596,6 @@ const QuotationBuilder = () => {
     downloadQuotationPdf(quotation);
   };
   
-  // Handle print PDF
   const handlePrintPdf = () => {
     const quotation = {
       id: generateQuotationId(),
@@ -649,7 +613,6 @@ const QuotationBuilder = () => {
     printQuotationPdf(quotation);
   };
   
-  // Handle email quotation
   const handleEmailQuotation = async () => {
     const quotation = {
       id: generateQuotationId(),
@@ -664,20 +627,15 @@ const QuotationBuilder = () => {
       notes
     };
     
-    // Add customer to CRM if not exists
     await getOrCreateCustomerFromQuotation(quotation);
     
-    // Send email
     await emailQuotation(quotation);
     
-    // Close dialog and navigate back
     setIsSaveDialogOpen(false);
     navigate('/quotations');
   };
   
-  // Handle save quotation
   const handleSaveQuotation = async (status: 'Draft' | 'Sent') => {
-    // Validate form
     if (!customerName) {
       toast.error('Please enter a customer name');
       return;
@@ -706,12 +664,9 @@ const QuotationBuilder = () => {
       notes
     };
     
-    // Add customer to CRM if not exists
     await getOrCreateCustomerFromQuotation(quotation);
     
-    // In a real app, this would save to the database
     if (status === 'Sent') {
-      // Send email for 'Sent' status
       await emailQuotation(quotation);
     }
     
@@ -719,10 +674,8 @@ const QuotationBuilder = () => {
     navigate('/quotations');
   };
   
-  // Get unique categories from inventory
   const categories = Array.from(new Set(inventoryData.map(item => item.category)));
   
-  // Determine if current item selection requires dimensions
   const selectedItemNeedsDimensions = () => {
     if (!selectedItemId) return false;
     
@@ -745,9 +698,7 @@ const QuotationBuilder = () => {
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column - Customer Information */}
         <div className="lg:col-span-4 space-y-6">
-          {/* Customer Information */}
           <Card className="glass-card shadow-md hover:shadow-lg transition-shadow duration-300">
             <CardContent className="p-6">
               <h2 className="text-lg font-semibold mb-4 flex items-center">
@@ -804,7 +755,6 @@ const QuotationBuilder = () => {
             </CardContent>
           </Card>
           
-          {/* Series Selection & Pricing */}
           <Card className="glass-card shadow-md hover:shadow-lg transition-shadow duration-300">
             <CardContent className="p-6">
               <h2 className="text-lg font-semibold mb-4 flex items-center">
@@ -935,7 +885,6 @@ const QuotationBuilder = () => {
             </CardContent>
           </Card>
           
-          {/* Notes */}
           <Card className="glass-card shadow-md hover:shadow-lg transition-shadow duration-300">
             <CardContent className="p-6">
               <h2 className="text-lg font-semibold mb-4 flex items-center">
@@ -957,7 +906,6 @@ const QuotationBuilder = () => {
           </Card>
         </div>
         
-        {/* Right Column - Quotation Items */}
         <div className="lg:col-span-8 space-y-6">
           <Card className="glass-card shadow-md hover:shadow-lg transition-shadow duration-300">
             <CardContent className="p-6">
@@ -982,7 +930,6 @@ const QuotationBuilder = () => {
                     </DialogHeader>
                     
                     <div className="grid gap-4 py-4">
-                      {/* Search and Filter */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
@@ -1020,7 +967,6 @@ const QuotationBuilder = () => {
                         </Select>
                       </div>
                       
-                      {/* Items List */}
                       <div className="border rounded-md max-h-[300px] overflow-y-auto">
                         <Table>
                           <TableHeader>
@@ -1100,7 +1046,6 @@ const QuotationBuilder = () => {
                         </Table>
                       </div>
                       
-                      {/* Dimensions section - Show for items that need dimensions */}
                       {selectedItemNeedsDimensions() && (
                         <div className="grid gap-4 p-4 bg-gray-50 rounded-lg border">
                           <h3 className="font-medium flex items-center">
@@ -1166,7 +1111,6 @@ const QuotationBuilder = () => {
                         </div>
                       )}
                       
-                      {/* Quantity */}
                       <div className="grid gap-2">
                         <Label htmlFor="quantity">Quantity</Label>
                         <div className="flex items-center">
@@ -1229,14 +1173,12 @@ const QuotationBuilder = () => {
                 </Dialog>
               </div>
               
-              {/* Series Badge */}
               <div className="mb-4">
                 <Badge className="bg-alu-accent text-white text-sm font-medium px-3 py-1">
                   {selectedSeries.charAt(0).toUpperCase() + selectedSeries.slice(1)} Series
                 </Badge>
               </div>
               
-              {/* Items Table */}
               <div className="border rounded-md overflow-hidden">
                 <Table>
                   <TableHeader>
@@ -1331,7 +1273,6 @@ const QuotationBuilder = () => {
             </CardContent>
           </Card>
           
-          {/* Pricing Summary */}
           {selectedItems.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -1406,7 +1347,6 @@ const QuotationBuilder = () => {
             </motion.div>
           )}
           
-          {/* Action Buttons */}
           <div className="flex justify-end space-x-3">
             <Button
               variant="outline"
