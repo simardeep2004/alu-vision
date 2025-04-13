@@ -1,6 +1,6 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 
 // Types
@@ -46,6 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Check for saved user on mount
   useEffect(() => {
@@ -96,7 +97,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('aluvision_user', JSON.stringify(userWithIsAdmin));
       
       toast.success('Logged in successfully');
-      navigate('/dashboard');
+      
+      // Get redirect path from location state or default to dashboard
+      const from = location.state?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Login failed');
       throw error;
