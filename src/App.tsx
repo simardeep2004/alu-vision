@@ -19,6 +19,7 @@ import QuotationBuilder from "@/pages/QuotationBuilder";
 import Admin from "@/pages/Admin";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
+import LandingPage from "@/pages/LandingPage";
 
 // Components
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -33,8 +34,8 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            {/* Redirect root to dashboard */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            {/* Landing Page */}
+            <Route path="/" element={<LandingPage />} />
 
             {/* Auth routes */}
             <Route path="/login" element={<Login />} />
