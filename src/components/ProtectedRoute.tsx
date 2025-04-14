@@ -1,4 +1,6 @@
-import { Navigate, useLocation, useNavigate, useEffect } from 'react-router-dom';
+
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 
