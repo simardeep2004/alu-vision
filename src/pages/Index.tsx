@@ -1,11 +1,23 @@
 
 import { useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { motion } from 'framer-motion';
 
 const Index = () => {
   const { user, isLoading } = useAuth();
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    // Force redirect after component mounts to ensure it happens
+    if (!isLoading) {
+      if (user) {
+        navigate('/dashboard', { replace: true });
+      } else {
+        navigate('/login', { replace: true });
+      }
+    }
+  }, [user, isLoading, navigate]);
   
   // Show loading state while checking auth
   if (isLoading) {
@@ -24,12 +36,8 @@ const Index = () => {
     );
   }
   
-  // Redirect based on auth state
-  if (user) {
-    return <Navigate to="/dashboard" replace />;
-  } else {
-    return <Navigate to="/login" replace />;
-  }
+  // This will only render briefly before the useEffect redirects
+  return null;
 };
 
 export default Index;

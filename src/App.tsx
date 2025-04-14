@@ -18,6 +18,7 @@ import NotFound from "./pages/NotFound";
 import LandingPage from "./pages/LandingPage";
 import Customers from "./pages/Customers";
 import CRM from "./pages/CRM";
+import Index from "./pages/Index";
 
 // Import Login and Signup from the correct path
 import Login from "./pages/auth/Login";
@@ -28,7 +29,8 @@ function App() {
     <Router>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<Index />} />
+          <Route path="/landing" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/dashboard" element={

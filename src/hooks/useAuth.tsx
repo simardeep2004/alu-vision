@@ -70,6 +70,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Set up auth state change listener
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log("Auth state change:", event, session);
+        
         if (event === 'SIGNED_IN' && session?.user) {
           try {
             const { data: profileData } = await supabase
@@ -85,11 +87,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               avatar_url: profileData?.avatar_url || '',
               role: session.user.email === 'admin@aluvision.com' ? 'admin' : 'user'
             });
+            
+            // Redirect to dashboard after successful sign in
+            navigate('/dashboard', { replace: true });
           } catch (error) {
             console.error('Error fetching profile on auth change:', error);
           }
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
+          navigate('/login', { replace: true });
         }
       }
     );
@@ -97,18 +103,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [navigate]);
 
   // Login function
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
+      console.log("Attempting login with:", email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
       if (error) throw error;
+
+      console.log("Login successful, user:", data.user);
 
       // If profile doesn't exist, create one
       const { data: profileData, error: profileError } = await supabase
@@ -133,8 +142,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Navigate to dashboard or previous page
       const from = location.state?.from?.pathname || '/dashboard';
+      console.log("Redirecting to:", from);
       navigate(from, { replace: true });
     } catch (error) {
+      console.error("Login error:", error);
       toast.error(error instanceof Error ? error.message : 'Login failed');
       throw error;
     } finally {

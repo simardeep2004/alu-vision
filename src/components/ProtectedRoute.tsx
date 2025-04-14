@@ -1,5 +1,4 @@
-
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useEffect } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 
@@ -11,6 +10,15 @@ type ProtectedRouteProps = {
 const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps) => {
   const { user, isLoading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Double-check auth status after component mounts
+    if (!isLoading && !user) {
+      console.log("User not authenticated, redirecting to login");
+      navigate('/login', { state: { from: location }, replace: true });
+    }
+  }, [user, isLoading, location, navigate]);
 
   // Show loading state while checking auth
   if (isLoading) {
@@ -26,15 +34,18 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
 
   // If not logged in, redirect to login
   if (!user) {
+    console.log("Not authenticated, redirecting to login");
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // If admin route but user is not admin, redirect to dashboard
   if (requireAdmin && user.role !== 'admin') {
+    console.log("Not admin, redirecting to dashboard");
     return <Navigate to="/dashboard" replace />;
   }
 
   // Otherwise, render the children
+  console.log("Authenticated, rendering protected content");
   return <>{children}</>;
 };
 
