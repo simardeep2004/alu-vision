@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Header from './Header';
-import Sidebar from './Sidebar';
 
 type MainLayoutProps = {
   children: React.ReactNode;
@@ -26,8 +25,6 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-      <Sidebar />
-      
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header />
         

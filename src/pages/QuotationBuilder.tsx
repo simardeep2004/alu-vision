@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
@@ -39,6 +39,59 @@ const QuotationBuilder = () => {
   });
   
   const [isSaving, setIsSaving] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
+  
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*');
+        
+        if (error) throw error;
+        
+        if (data) {
+          console.log('Fetched products:', data);
+          setProducts(data);
+        }
+      } catch (error) {
+        console.error('Error fetching products:', error);
+        toast.error('Failed to load products from database');
+      }
+    };
+    
+    fetchProducts();
+    
+    const channel = supabase
+      .channel('public:products')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'products' 
+      }, (payload) => {
+        console.log('Realtime update received:', payload);
+        fetchProducts();
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+  
+  const handleProductSelect = (productId: number) => {
+    const selectedProduct = products.find(product => product.id === productId);
+    if (selectedProduct) {
+      setCurrentItem({
+        name: selectedProduct.name,
+        category: selectedProduct.category,
+        quantity: 1,
+        unit: selectedProduct.unit_type,
+        unitPrice: selectedProduct.base_rate,
+        description: selectedProduct.description || ''
+      });
+    }
+  };
   
   const addItem = () => {
     if (!currentItem.name || !currentItem.category) {
@@ -136,34 +189,47 @@ const QuotationBuilder = () => {
     setIsSaving(true);
     
     try {
-      const newQuotation: Quotation = {
-        id: uuidv4(),
-        ...quotation,
-        status
+      const quotationId = uuidv4();
+      const newQuotation = {
+        id: quotationId,
+        customer_name: quotation.customerName,
+        customer_email: quotation.customerEmail,
+        customer_phone: quotation.customerPhone,
+        customer_address: quotation.customerAddress,
+        date: quotation.date,
+        total: quotation.total,
+        status: status,
+        items: quotation.items,
+        notes: quotation.notes,
+        created_at: new Date().toISOString(),
+        created_by: user?.id || 'unknown'
       };
+      
+      console.log('Saving quotation:', newQuotation);
       
       const { error } = await supabase
         .from('quotations')
+        .insert(newQuotation);
+      
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
+      
+      console.log('Quotation saved successfully with ID:', quotationId);
+      toast.success(`Quotation ${status === 'Sent' ? 'sent' : 'saved'} successfully`);
+      
+      await supabase
+        .from('activity_log')
         .insert({
-          id: newQuotation.id,
-          customer_name: newQuotation.customerName,
-          customer_email: newQuotation.customerEmail,
-          customer_phone: newQuotation.customerPhone,
-          customer_address: newQuotation.customerAddress,
-          date: newQuotation.date,
-          total: newQuotation.total,
-          status: newQuotation.status,
-          items: newQuotation.items,
-          notes: newQuotation.notes
+          user_name: user?.full_name || 'Unknown user',
+          action: `Created quotation #${quotationId.substring(0, 8)} as ${status}`
         });
       
-      if (error) throw error;
-      
-      toast.success(`Quotation ${status === 'Sent' ? 'sent' : 'saved'} successfully`);
       navigate('/quotations');
     } catch (error) {
       console.error('Error saving quotation:', error);
-      toast.error('Failed to save quotation');
+      toast.error('Failed to save quotation. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -254,6 +320,25 @@ const QuotationBuilder = () => {
           
           <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md mb-6">
             <h3 className="text-md font-medium mb-3">Add New Item</h3>
+            
+            <div className="mb-4">
+              <Label htmlFor="product">Select from products</Label>
+              <Select 
+                onValueChange={(value) => handleProductSelect(Number(value))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a product" />
+                </SelectTrigger>
+                <SelectContent>
+                  {products.map((product) => (
+                    <SelectItem key={product.id} value={product.id.toString()}>
+                      {product.name} (₹{product.base_rate.toFixed(2)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500 mt-1">Select a product to quickly fill in details</p>
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
