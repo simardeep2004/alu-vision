@@ -19,6 +19,7 @@ export type Database = {
           items: any;
           notes: string | null;
           created_at: string;
+          created_by: string;
         };
         Insert: {
           id: string;
@@ -32,6 +33,7 @@ export type Database = {
           items: any;
           notes?: string | null;
           created_at?: string;
+          created_by: string;
         };
         Update: {
           id?: string;
@@ -45,6 +47,237 @@ export type Database = {
           items?: any;
           notes?: string | null;
           created_at?: string;
+          created_by?: string;
+        };
+      };
+      products: {
+        Row: {
+          id: number;
+          name: string;
+          category: string;
+          series: string | null;
+          base_rate: number;
+          unit_type: string;
+          description: string | null;
+        };
+        Insert: {
+          id?: number;
+          name: string;
+          category: string;
+          series?: string | null;
+          base_rate: number;
+          unit_type: string;
+          description?: string | null;
+        };
+        Update: {
+          id?: number;
+          name?: string;
+          category?: string;
+          series?: string | null;
+          base_rate?: number;
+          unit_type?: string;
+          description?: string | null;
+        };
+      };
+      series: {
+        Row: {
+          id: number;
+          name: string;
+          profile_weight: number;
+          material_rate: number;
+        };
+        Insert: {
+          id?: number;
+          name: string;
+          profile_weight: number;
+          material_rate: number;
+        };
+        Update: {
+          id?: number;
+          name?: string;
+          profile_weight?: number;
+          material_rate?: number;
+        };
+      };
+      glass: {
+        Row: {
+          id: number;
+          type: string;
+          thickness: number;
+          rate: number;
+        };
+        Insert: {
+          id?: number;
+          type: string;
+          thickness: number;
+          rate: number;
+        };
+        Update: {
+          id?: number;
+          type?: string;
+          thickness?: number;
+          rate?: number;
+        };
+      };
+      admin_settings: {
+        Row: {
+          id: number;
+          wastage_percentage: number;
+          tax_percentage: number;
+          labor_percentage: number;
+          logo: string | null;
+        };
+        Insert: {
+          id?: number;
+          wastage_percentage: number;
+          tax_percentage: number;
+          labor_percentage: number;
+          logo?: string | null;
+        };
+        Update: {
+          id?: number;
+          wastage_percentage?: number;
+          tax_percentage?: number;
+          labor_percentage?: number;
+          logo?: string | null;
+        };
+      };
+      admin_users: {
+        Row: {
+          id: number;
+          name: string;
+          email: string;
+          role: string;
+          status: string;
+        };
+        Insert: {
+          id?: number;
+          name: string;
+          email: string;
+          role: string;
+          status: string;
+        };
+        Update: {
+          id?: number;
+          name?: string;
+          email?: string;
+          role?: string;
+          status?: string;
+        };
+      };
+      transactions: {
+        Row: {
+          id: number;
+          date: string;
+          customer_name: string;
+          item_purchased: string;
+          quantity: number;
+          total: number;
+        };
+        Insert: {
+          id?: number;
+          date: string;
+          customer_name: string;
+          item_purchased: string;
+          quantity: number;
+          total: number;
+        };
+        Update: {
+          id?: number;
+          date?: string;
+          customer_name?: string;
+          item_purchased?: string;
+          quantity?: number;
+          total?: number;
+        };
+      };
+      activity_log: {
+        Row: {
+          id: number;
+          user_name: string;
+          action: string;
+          timestamp: string;
+        };
+        Insert: {
+          id?: number;
+          user_name: string;
+          action: string;
+          timestamp?: string;
+        };
+        Update: {
+          id?: number;
+          user_name?: string;
+          action?: string;
+          timestamp?: string;
+        };
+      };
+      crm: {
+        Row: {
+          id: number;
+          customer_name: string;
+          email: string;
+          phone_number: string | null;
+          address: string | null;
+          interaction_notes: string | null;
+        };
+        Insert: {
+          id?: number;
+          customer_name: string;
+          email: string;
+          phone_number?: string | null;
+          address?: string | null;
+          interaction_notes?: string | null;
+        };
+        Update: {
+          id?: number;
+          customer_name?: string;
+          email?: string;
+          phone_number?: string | null;
+          address?: string | null;
+          interaction_notes?: string | null;
+        };
+      };
+      profiles: {
+        Row: {
+          id: string;
+          full_name: string | null;
+          avatar_url: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id: string;
+          full_name?: string | null;
+          avatar_url?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          full_name?: string | null;
+          avatar_url?: string | null;
+          updated_at?: string | null;
+        };
+      };
+      notifications: {
+        Row: {
+          id: string;
+          created_at: string | null;
+          user_id: string;
+          read: boolean | null;
+          message: string;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string | null;
+          user_id: string;
+          read?: boolean | null;
+          message: string;
+        };
+        Update: {
+          id?: string;
+          created_at?: string | null;
+          user_id?: string;
+          read?: boolean | null;
+          message?: string;
         };
       };
     };

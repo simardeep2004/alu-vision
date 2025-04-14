@@ -9,6 +9,123 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          action: string
+          id: number
+          timestamp: string | null
+          user_name: string
+        }
+        Insert: {
+          action: string
+          id?: number
+          timestamp?: string | null
+          user_name: string
+        }
+        Update: {
+          action?: string
+          id?: number
+          timestamp?: string | null
+          user_name?: string
+        }
+        Relationships: []
+      }
+      admin_settings: {
+        Row: {
+          id: number
+          labor_percentage: number
+          logo: string | null
+          tax_percentage: number
+          wastage_percentage: number
+        }
+        Insert: {
+          id?: number
+          labor_percentage: number
+          logo?: string | null
+          tax_percentage: number
+          wastage_percentage: number
+        }
+        Update: {
+          id?: number
+          labor_percentage?: number
+          logo?: string | null
+          tax_percentage?: number
+          wastage_percentage?: number
+        }
+        Relationships: []
+      }
+      admin_users: {
+        Row: {
+          email: string
+          id: number
+          name: string
+          role: string
+          status: string
+        }
+        Insert: {
+          email: string
+          id?: number
+          name: string
+          role: string
+          status: string
+        }
+        Update: {
+          email?: string
+          id?: number
+          name?: string
+          role?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      crm: {
+        Row: {
+          address: string | null
+          customer_name: string
+          email: string
+          id: number
+          interaction_notes: string | null
+          phone_number: string | null
+        }
+        Insert: {
+          address?: string | null
+          customer_name: string
+          email: string
+          id?: number
+          interaction_notes?: string | null
+          phone_number?: string | null
+        }
+        Update: {
+          address?: string | null
+          customer_name?: string
+          email?: string
+          id?: number
+          interaction_notes?: string | null
+          phone_number?: string | null
+        }
+        Relationships: []
+      }
+      glass: {
+        Row: {
+          id: number
+          rate: number
+          thickness: number
+          type: string
+        }
+        Insert: {
+          id?: number
+          rate: number
+          thickness: number
+          type: string
+        }
+        Update: {
+          id?: number
+          rate?: number
+          thickness?: number
+          type?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string | null
@@ -33,6 +150,36 @@ export type Database = {
         }
         Relationships: []
       }
+      products: {
+        Row: {
+          base_rate: number
+          category: string
+          description: string | null
+          id: number
+          name: string
+          series: string | null
+          unit_type: string
+        }
+        Insert: {
+          base_rate: number
+          category: string
+          description?: string | null
+          id?: number
+          name: string
+          series?: string | null
+          unit_type: string
+        }
+        Update: {
+          base_rate?: number
+          category?: string
+          description?: string | null
+          id?: number
+          name?: string
+          series?: string | null
+          unit_type?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -51,6 +198,54 @@ export type Database = {
           full_name?: string | null
           id?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      series: {
+        Row: {
+          id: number
+          material_rate: number
+          name: string
+          profile_weight: number
+        }
+        Insert: {
+          id?: number
+          material_rate: number
+          name: string
+          profile_weight: number
+        }
+        Update: {
+          id?: number
+          material_rate?: number
+          name?: string
+          profile_weight?: number
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          customer_name: string
+          date: string
+          id: number
+          item_purchased: string
+          quantity: number
+          total: number
+        }
+        Insert: {
+          customer_name: string
+          date: string
+          id?: number
+          item_purchased: string
+          quantity: number
+          total: number
+        }
+        Update: {
+          customer_name?: string
+          date?: string
+          id?: number
+          item_purchased?: string
+          quantity?: number
+          total?: number
         }
         Relationships: []
       }
