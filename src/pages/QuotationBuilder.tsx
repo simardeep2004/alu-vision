@@ -65,7 +65,6 @@ const QuotationBuilder = () => {
       };
     });
     
-    // Reset current item
     setCurrentItem({
       name: '',
       category: '',
@@ -143,7 +142,6 @@ const QuotationBuilder = () => {
         status
       };
       
-      // Save to Supabase
       const { error } = await supabase
         .from('quotations')
         .insert({
@@ -176,7 +174,6 @@ const QuotationBuilder = () => {
       <h1 className="text-2xl font-bold mb-6">Create New Quotation</h1>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Customer Information */}
         <Card className="p-6 lg:col-span-1">
           <h2 className="text-lg font-semibold mb-4">Customer Information</h2>
           
@@ -252,11 +249,9 @@ const QuotationBuilder = () => {
           </div>
         </Card>
         
-        {/* Quotation Items */}
         <Card className="p-6 lg:col-span-2">
           <h2 className="text-lg font-semibold mb-4">Quotation Items</h2>
           
-          {/* Add new item form */}
           <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md mb-6">
             <h3 className="text-md font-medium mb-3">Add New Item</h3>
             
@@ -352,7 +347,6 @@ const QuotationBuilder = () => {
             </Button>
           </div>
           
-          {/* Items list */}
           <div className="mb-6">
             <h3 className="text-md font-medium mb-3">Items ({quotation.items.length})</h3>
             
@@ -413,7 +407,6 @@ const QuotationBuilder = () => {
             )}
           </div>
           
-          {/* Action buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-end">
             <Button 
               variant="outline" 
