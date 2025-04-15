@@ -45,12 +45,11 @@ export const subscribeToTable = (
   event: 'INSERT' | 'UPDATE' | 'DELETE' | '*' = '*'
 ): () => void => {
   // Create a channel with a unique name for this table
-  const channel = supabase.channel(`table:${tableName}`);
+  const channel = supabase.channel(`table-${tableName}`);
   
-  // Subscribe to postgres changes
+  // Subscribe to postgres changes using the correct syntax
   channel
-    .on(
-      'postgres_changes',
+    .on('postgres_changes', 
       {
         event: event,
         schema: 'public',
@@ -60,9 +59,7 @@ export const subscribeToTable = (
         callback(payload);
       }
     )
-    .subscribe((status) => {
-      console.log(`Subscription status for ${tableName}:`, status);
-    });
+    .subscribe();
   
   // Return a function to unsubscribe
   return () => {
