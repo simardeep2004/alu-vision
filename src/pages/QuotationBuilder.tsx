@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
-import { PlusCircle, Save, Trash2, Send } from 'lucide-react';
+import { PlusCircle, Save, Trash2, Download } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Quotation, QuotationItem, QuotationStatus } from '@/types/quotation';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { subscribeToTable } from '@/utils/supabaseRealtime';
 
 const QuotationBuilder = () => {
   const navigate = useNavigate();
@@ -62,20 +64,14 @@ const QuotationBuilder = () => {
     
     fetchProducts();
     
-    const channel = supabase
-      .channel('public:products')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'products' 
-      }, (payload) => {
-        console.log('Realtime update received:', payload);
-        fetchProducts();
-      })
-      .subscribe();
+    // Subscribe to realtime updates
+    const unsubscribe = subscribeToTable('products', (payload) => {
+      console.log('Realtime update received:', payload);
+      fetchProducts();
+    });
       
     return () => {
-      supabase.removeChannel(channel);
+      unsubscribe();
     };
   }, []);
   
@@ -217,7 +213,7 @@ const QuotationBuilder = () => {
       }
       
       console.log('Quotation saved successfully with ID:', quotationId);
-      toast.success(`Quotation ${status === 'Sent' ? 'sent' : 'saved'} successfully`);
+      toast.success(`Quotation saved successfully as ${status}`);
       
       await supabase
         .from('activity_log')
@@ -232,6 +228,44 @@ const QuotationBuilder = () => {
       toast.error('Failed to save quotation. Please try again.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const exportQuotation = () => {
+    if (!quotation.customerName || quotation.items.length === 0) {
+      toast.error('Cannot export an empty quotation');
+      return;
+    }
+
+    try {
+      // Convert the quotation to JSON string
+      const quotationJson = JSON.stringify(quotation, null, 2);
+      
+      // Create a blob from the JSON string
+      const blob = new Blob([quotationJson], { type: 'application/json' });
+      
+      // Create a temporary URL for the blob
+      const url = URL.createObjectURL(blob);
+      
+      // Create a link element
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `quotation-${new Date().toISOString().split('T')[0]}.json`;
+      
+      // Append the link to the body
+      document.body.appendChild(link);
+      
+      // Click the link to start the download
+      link.click();
+      
+      // Clean up
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      toast.success('Quotation exported successfully');
+    } catch (error) {
+      console.error('Error exporting quotation:', error);
+      toast.error('Failed to export quotation');
     }
   };
   
@@ -495,20 +529,19 @@ const QuotationBuilder = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-end">
             <Button 
               variant="outline" 
+              onClick={exportQuotation}
+              disabled={quotation.items.length === 0}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
+            
+            <Button 
               onClick={() => saveQuotation('Draft')} 
               disabled={isSaving}
             >
               <Save className="mr-2 h-4 w-4" />
               Save as Draft
-            </Button>
-            
-            <Button 
-              onClick={() => saveQuotation('Sent')} 
-              disabled={isSaving}
-              className="bg-alu-primary hover:bg-alu-primary/90"
-            >
-              <Send className="mr-2 h-4 w-4" />
-              Save and Send
             </Button>
           </div>
         </Card>
