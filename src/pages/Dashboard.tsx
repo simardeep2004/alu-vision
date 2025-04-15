@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { 
@@ -119,44 +118,8 @@ const Dashboard = () => {
     
     fetchData();
     
-    // Set up real-time listeners
-    const quotationsChannel = supabase
-      .channel('quotations-changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'quotations' 
-      }, () => {
-        fetchData();
-      })
-      .subscribe();
-      
-    const activitiesChannel = supabase
-      .channel('activities-changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'activity_log' 
-      }, () => {
-        fetchData();
-      })
-      .subscribe();
-      
-    const productsChannel = supabase
-      .channel('products-changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'products' 
-      }, () => {
-        fetchData();
-      })
-      .subscribe();
-    
     return () => {
-      supabase.removeChannel(quotationsChannel);
-      supabase.removeChannel(activitiesChannel);
-      supabase.removeChannel(productsChannel);
+      // Cleanup function is empty since we removed real-time subscriptions
     };
   }, []);
   
