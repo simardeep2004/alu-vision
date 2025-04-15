@@ -40,18 +40,21 @@ export const enableRealtimeForTable = async (tableName: string): Promise<void> =
  */
 export const subscribeToTable = (
   tableName: string, 
-  callback: (payload: any) => void
+  callback: (payload: any) => void,
+  event: 'INSERT' | 'UPDATE' | 'DELETE' | '*' = '*'
 ): () => void => {
   const channel = supabase
     .channel(`public:${tableName}`)
     .on('postgres_changes', { 
-      event: '*', 
+      event, 
       schema: 'public', 
       table: tableName 
     }, (payload) => {
       callback(payload);
     })
-    .subscribe();
+    .subscribe((status) => {
+      console.log(`Subscription status for ${tableName}:`, status);
+    });
     
   return () => {
     supabase.removeChannel(channel);
@@ -66,4 +69,24 @@ export const enableRealtimeForTables = async (tableNames: string[]): Promise<voi
   for (const tableName of tableNames) {
     await enableRealtimeForTable(tableName);
   }
+};
+
+/**
+ * Subscribe to multiple tables at once
+ * @param tables Object mapping table names to callback functions
+ * @returns Function to unsubscribe from all tables
+ */
+export const subscribeToTables = (
+  tables: Record<string, (payload: any) => void>
+): () => void => {
+  const unsubscribers: Array<() => void> = [];
+  
+  for (const [tableName, callback] of Object.entries(tables)) {
+    const unsubscribe = subscribeToTable(tableName, callback);
+    unsubscribers.push(unsubscribe);
+  }
+  
+  return () => {
+    unsubscribers.forEach(unsubscribe => unsubscribe());
+  };
 };

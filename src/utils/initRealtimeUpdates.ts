@@ -10,7 +10,10 @@ export const initializeRealtimeUpdates = async (): Promise<void> => {
       'quotations',
       'products',
       'activity_log',
-      'profiles'
+      'profiles',
+      'customers',
+      'transactions',
+      'notifications'
     ];
     
     await enableRealtimeForTables(tables);

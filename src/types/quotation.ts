@@ -1,6 +1,8 @@
 
 export type QuotationStatus = 'Draft' | 'Sent' | 'Approved' | 'Rejected';
 
+export type MaterialType = 'Aluminum' | 'UPVC' | 'Wood' | 'Glass' | 'Accessories';
+
 export type QuotationItem = {
   id: string;
   name: string;
@@ -17,6 +19,13 @@ export type QuotationItem = {
   perUnitPrice?: number;  // Price per 1000mm²
   description?: string;
   discount?: number;  // Discount percentage for this item
+  materialType?: MaterialType;
+  finish?: string;  // Finish type (anodized, powder coated, etc.)
+  color?: string;  // Color of the item
+  thickness?: number;  // Thickness in mm
+  installationIncluded?: boolean;  // Whether installation is included
+  deliveryDate?: string;  // Expected delivery date
+  imageUrl?: string;  // URL to item image
 };
 
 export type Quotation = {
@@ -30,6 +39,18 @@ export type Quotation = {
   status: QuotationStatus;
   items: QuotationItem[];
   notes?: string;
+  validUntil?: string;  // Quotation validity date
+  createdBy?: string;   // User who created the quotation
+  lastModified?: string; // Date of last modification
+  approvedBy?: string;  // Customer name/signature if approved
+  rejectionReason?: string; // Reason if rejected
+  termsAndConditions?: string; // Terms and conditions
+  discountTotal?: number; // Total discount amount
+  taxRate?: number;     // Tax rate percentage
+  taxAmount?: number;   // Tax amount
+  subtotal?: number;    // Subtotal before tax
+  paymentTerms?: string; // Payment terms
+  deliveryMethod?: string; // Delivery method
 };
 
 // Add customer type for CRM
@@ -42,4 +63,9 @@ export type Customer = {
   notes?: string;
   created: string;
   quotations?: string[]; // IDs of quotations
+  company?: string;      // Company name if business customer
+  contactPerson?: string; // Secondary contact person
+  customerType?: 'Individual' | 'Business'; // Type of customer
+  source?: string;       // How the customer was acquired
+  status?: 'Active' | 'Inactive' | 'Lead'; // Customer status
 };

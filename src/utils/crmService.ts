@@ -1,4 +1,3 @@
-
 import { Customer, Quotation } from '@/types/quotation';
 import { toast } from 'sonner';
 import { sendWelcomeEmail } from './emailService';
@@ -10,8 +9,8 @@ let customersDB: Customer[] = [
     name: 'Rajesh Sharma',
     email: 'rajesh.sharma@example.com',
     phone: '+91 98765 43210',
-    address: '123 MG Road, Bangalore',
-    notes: 'Interested in premium aluminum windows',
+    address: '123 MG Road, Bangalore 560001',
+    notes: 'Interested in premium aluminum windows for his new office building. Prefers darker shades.',
     created: '2025-03-15',
     quotations: ['Q001', 'Q003']
   },
@@ -20,8 +19,8 @@ let customersDB: Customer[] = [
     name: 'Priya Patel',
     email: 'priya.patel@example.com',
     phone: '+91 87654 32109',
-    address: '456 Anna Salai, Chennai',
-    notes: 'Prefers glass doors with frosted finish',
+    address: '456 Anna Salai, Chennai 600002',
+    notes: 'Renovating her home, prefers glass doors with frosted finish. Budget-conscious but wants quality.',
     created: '2025-03-20',
     quotations: ['Q002']
   },
@@ -30,8 +29,39 @@ let customersDB: Customer[] = [
     name: 'Amit Verma',
     email: 'amit.verma@example.com',
     phone: '+91 76543 21098',
-    address: '789 Park Street, Kolkata',
+    address: '789 Park Street, Kolkata 700016',
+    notes: 'Looking for aluminum sliding windows for his apartment complex. Needs bulk pricing.',
     created: '2025-03-25',
+    quotations: []
+  },
+  {
+    id: 'C004',
+    name: 'Sneha Reddy',
+    email: 'sneha.reddy@example.com',
+    phone: '+91 65432 10987',
+    address: '234 Jubilee Hills, Hyderabad 500033',
+    notes: 'Interior designer looking for premium glazing solutions for a commercial project.',
+    created: '2025-04-01',
+    quotations: []
+  },
+  {
+    id: 'C005',
+    name: 'Vikram Singh',
+    email: 'vikram.singh@example.com',
+    phone: '+91 54321 09876',
+    address: '567 Sector 18, Gurgaon 122001',
+    notes: 'Building a new house, needs complete window and door solutions.',
+    created: '2025-04-05',
+    quotations: []
+  },
+  {
+    id: 'C006',
+    name: 'Meera Joshi',
+    email: 'meera.joshi@example.com',
+    phone: '+91 43210 98765',
+    address: '890 FC Road, Pune 411004',
+    notes: 'Referred by Rajesh Sharma. Looking for similar solutions but with different color options.',
+    created: '2025-04-10',
     quotations: []
   }
 ];
