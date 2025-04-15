@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -14,6 +13,7 @@ import { Quotation, QuotationItem, QuotationStatus } from '@/types/quotation';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { subscribeToTable } from '@/utils/supabaseRealtime';
+import { downloadQuotationPdf } from '@/utils/pdfGenerator';
 
 const QuotationBuilder = () => {
   const navigate = useNavigate();
@@ -238,6 +238,25 @@ const QuotationBuilder = () => {
     }
 
     try {
+      // Export the quotation as PDF
+      downloadQuotationPdf({
+        id: 'draft-' + new Date().getTime(),
+        ...quotation
+      });
+      toast.success('Quotation exported successfully');
+    } catch (error) {
+      console.error('Error exporting quotation:', error);
+      toast.error('Failed to export quotation');
+    }
+  };
+  
+  const exportQuotationJSON = () => {
+    if (!quotation.customerName || quotation.items.length === 0) {
+      toast.error('Cannot export an empty quotation');
+      return;
+    }
+
+    try {
       // Convert the quotation to JSON string
       const quotationJson = JSON.stringify(quotation, null, 2);
       
@@ -262,10 +281,10 @@ const QuotationBuilder = () => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
-      toast.success('Quotation exported successfully');
+      toast.success('Quotation exported as JSON successfully');
     } catch (error) {
-      console.error('Error exporting quotation:', error);
-      toast.error('Failed to export quotation');
+      console.error('Error exporting quotation as JSON:', error);
+      toast.error('Failed to export quotation as JSON');
     }
   };
   
@@ -533,7 +552,16 @@ const QuotationBuilder = () => {
               disabled={quotation.items.length === 0}
             >
               <Download className="mr-2 h-4 w-4" />
-              Export
+              Export PDF
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              onClick={exportQuotationJSON}
+              disabled={quotation.items.length === 0}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export JSON
             </Button>
             
             <Button 
