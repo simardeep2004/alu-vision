@@ -45,13 +45,17 @@ export const subscribeToTable = (
 ): () => void => {
   const channel = supabase
     .channel(`public:${tableName}`)
-    .on('postgres_changes', { 
-      event, 
-      schema: 'public', 
-      table: tableName 
-    }, (payload) => {
-      callback(payload);
-    })
+    .on(
+      'postgres_changes', 
+      { 
+        event, 
+        schema: 'public', 
+        table: tableName 
+      }, 
+      (payload) => {
+        callback(payload);
+      }
+    )
     .subscribe((status) => {
       console.log(`Subscription status for ${tableName}:`, status);
     });
