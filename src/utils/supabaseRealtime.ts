@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 /**
  * Enables real-time functionality for the specified table
@@ -41,7 +41,7 @@ export const enableRealtimeForTable = async (tableName: string): Promise<void> =
  */
 export const subscribeToTable = (
   tableName: string, 
-  callback: (payload: any) => void,
+  callback: (payload: RealtimePostgresChangesPayload<any>) => void,
   event: 'INSERT' | 'UPDATE' | 'DELETE' | '*' = '*'
 ): () => void => {
   // Create a channel with a unique name for this table
