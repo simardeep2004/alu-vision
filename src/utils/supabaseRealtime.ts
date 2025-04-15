@@ -57,3 +57,13 @@ export const subscribeToTable = (
     supabase.removeChannel(channel);
   };
 };
+
+/**
+ * Enable realtime for multiple tables at once
+ * @param tableNames Array of table names to enable real-time for
+ */
+export const enableRealtimeForTables = async (tableNames: string[]): Promise<void> => {
+  for (const tableName of tableNames) {
+    await enableRealtimeForTable(tableName);
+  }
+};
