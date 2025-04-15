@@ -47,15 +47,13 @@ export const subscribeToTable = (
   // Create a channel with a unique name for this table
   const channel = supabase.channel(`table-changes:${tableName}`);
   
-  // Subscribe to changes using the proper Supabase Realtime API syntax
+  // Subscribe to changes using the current Supabase Realtime API syntax
   channel
-    .on(
-      'postgres_changes', 
-      {
+    .on('postgres_changes', {
         event: event,
         schema: 'public',
         table: tableName
-      },
+      }, 
       (payload) => {
         callback(payload);
       }
