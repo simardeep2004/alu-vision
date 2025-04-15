@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -46,15 +47,17 @@ export const subscribeToTable = (
   // Create a channel with a unique name for this table
   const channel = supabase.channel(`table-changes:${tableName}`);
   
-  // Subscribe to changes with the correct Supabase Realtime API syntax
+  // Subscribe to changes using the correct Supabase Realtime API syntax
   channel
-    .on('postgres_changes', {
-      event: event,
-      schema: 'public',
-      table: tableName
-    }, (payload) => {
-      callback(payload);
-    })
+    .on(
+      'postgres_changes', 
+      { 
+        event: event,
+        schema: 'public',
+        table: tableName
+      },
+      callback
+    )
     .subscribe();
   
   // Return a function to unsubscribe
