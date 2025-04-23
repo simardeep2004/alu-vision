@@ -32,7 +32,7 @@
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/simardeep2004/thealuvision.git
+git clone https://github.com/simardeep2004/alu-vision.git
 cd thealuvision
 ```
 
